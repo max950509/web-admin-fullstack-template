@@ -1,0 +1,7 @@
+{
+  "name": "web-admin-fullstack-template",
+  "version": "1.0.0",
+  "volta": {
+    "node": "22.21.1"
+  }
+}
