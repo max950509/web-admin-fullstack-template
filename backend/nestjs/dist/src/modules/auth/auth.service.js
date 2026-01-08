@@ -41,22 +41,29 @@ var __importStar = (this && this.__importStar) || (function () {
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
+const cache_manager_1 = require("@nestjs/cache-manager");
 const jwt_1 = require("@nestjs/jwt");
 const user_service_1 = require("../user/user.service");
 const svgCaptcha = __importStar(require("svg-captcha"));
 const otplib_1 = require("otplib");
 const qrcode_1 = require("qrcode");
 const bcrypt = __importStar(require("bcrypt"));
+const crypto_1 = require("crypto");
 let AuthService = class AuthService {
     userService;
     jwtService;
-    captchaCache = new Map();
-    constructor(userService, jwtService) {
+    cacheManager;
+    captchaTtlMs = 5 * 60 * 1000;
+    constructor(userService, jwtService, cacheManager) {
         this.userService = userService;
         this.jwtService = jwtService;
+        this.cacheManager = cacheManager;
     }
     async validateUser(username, pass) {
         const user = await this.userService.findOneByUsername(username);
@@ -66,22 +73,24 @@ let AuthService = class AuthService {
         }
         return null;
     }
-    generateCaptcha() {
+    getCaptchaKey(id) {
+        return `captcha:${id}`;
+    }
+    async generateCaptcha() {
         const captcha = svgCaptcha.create({
             size: 4,
             ignoreChars: '0o1i',
             noise: 2,
             color: true,
         });
-        const captchaId = `captcha_${Date.now()}`;
-        this.captchaCache.set(captchaId, captcha.text.toLowerCase());
-        setTimeout(() => this.captchaCache.delete(captchaId), 5 * 60 * 1000);
+        const captchaId = (0, crypto_1.randomUUID)();
+        await this.cacheManager.set(this.getCaptchaKey(captchaId), captcha.text.toLowerCase(), this.captchaTtlMs);
         return { id: captchaId, svg: captcha.data };
     }
-    validateCaptcha(id, text) {
-        const storedText = this.captchaCache.get(id);
+    async validateCaptcha(id, text) {
+        const storedText = await this.cacheManager.get(this.getCaptchaKey(id));
         if (storedText === text.toLowerCase()) {
-            this.captchaCache.delete(id);
+            await this.cacheManager.del(this.getCaptchaKey(id));
             return true;
         }
         return false;
@@ -176,7 +185,8 @@ let AuthService = class AuthService {
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = __decorate([
     (0, common_1.Injectable)(),
+    __param(2, (0, common_1.Inject)(cache_manager_1.CACHE_MANAGER)),
     __metadata("design:paramtypes", [user_service_1.UserService,
-        jwt_1.JwtService])
+        jwt_1.JwtService, Object])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

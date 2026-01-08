@@ -17,13 +17,13 @@ let CaptchaGuard = class CaptchaGuard {
     constructor(authService) {
         this.authService = authService;
     }
-    canActivate(context) {
+    async canActivate(context) {
         const req = context.switchToHttp().getRequest();
         const { captchaId, captcha } = req.body;
         if (!captchaId || !captcha) {
             throw new common_1.BadRequestException('验证码不能为空');
         }
-        const isValid = this.authService.validateCaptcha(captchaId, captcha);
+        const isValid = await this.authService.validateCaptcha(captchaId, captcha);
         if (!isValid) {
             throw new common_1.BadRequestException('无效验证码');
         }

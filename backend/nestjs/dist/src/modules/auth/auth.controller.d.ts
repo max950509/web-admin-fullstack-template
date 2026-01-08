@@ -6,10 +6,10 @@ export declare const ReqUser: (...dataOrPipes: unknown[]) => ParameterDecorator;
 export declare class AuthController {
     private readonly authService;
     constructor(authService: AuthService);
-    getCaptcha(): {
+    getCaptcha(): Promise<{
         id: string;
         svg: string;
-    };
+    }>;
     login(req: any, loginDto: LoginDto): Promise<{
         message: string;
         accessToken: string;

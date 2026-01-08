@@ -10,7 +10,7 @@ import { AuthService } from '../../modules/auth/auth.service';
 export class CaptchaGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest();
 
     const { captchaId, captcha } = req.body;
@@ -19,7 +19,7 @@ export class CaptchaGuard implements CanActivate {
       throw new BadRequestException('验证码不能为空');
     }
 
-    const isValid = this.authService.validateCaptcha(captchaId, captcha);
+    const isValid = await this.authService.validateCaptcha(captchaId, captcha);
     if (!isValid) {
       throw new BadRequestException('无效验证码');
     }

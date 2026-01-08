@@ -2,7 +2,10 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { User, Role, Permission } from '@prisma/client';
@@ -10,6 +13,7 @@ import * as svgCaptcha from 'svg-captcha';
 import { authenticator } from 'otplib';
 import { toDataURL } from 'qrcode';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 type UserWithRoles = Omit<User, 'password'> & {
   roles: (Role & { permissions: Permission[] })[];
@@ -17,12 +21,12 @@ type UserWithRoles = Omit<User, 'password'> & {
 
 @Injectable()
 export class AuthService {
-  // A simple in-memory cache for CAPTCHAs. In production, use Redis or another cache store.
-  private captchaCache = new Map<string, string>();
+  private readonly captchaTtlMs = 5 * 60 * 1000;
 
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   /**
@@ -47,18 +51,23 @@ export class AuthService {
    * Generates a new CAPTCHA.
    * @returns An object containing the ID and the SVG data of the CAPTCHA.
    */
-  generateCaptcha(): { id: string; svg: string } {
+  private getCaptchaKey(id: string): string {
+    return `captcha:${id}`;
+  }
+
+  async generateCaptcha(): Promise<{ id: string; svg: string }> {
     const captcha = svgCaptcha.create({
       size: 4,
       ignoreChars: '0o1i',
       noise: 2,
       color: true,
     });
-    const captchaId = `captcha_${Date.now()}`;
-    this.captchaCache.set(captchaId, captcha.text.toLowerCase());
-
-    // Clean up the cache after 5 minutes
-    setTimeout(() => this.captchaCache.delete(captchaId), 5 * 60 * 1000);
+    const captchaId = randomUUID();
+    await this.cacheManager.set(
+      this.getCaptchaKey(captchaId),
+      captcha.text.toLowerCase(),
+      this.captchaTtlMs,
+    );
 
     return { id: captchaId, svg: captcha.data };
   }
@@ -68,10 +77,12 @@ export class AuthService {
    * @param id The ID of the CAPTCHA.
    * @param text The text to validate against.
    */
-  validateCaptcha(id: string, text: string): boolean {
-    const storedText = this.captchaCache.get(id);
+  async validateCaptcha(id: string, text: string): Promise<boolean> {
+    const storedText = await this.cacheManager.get<string>(
+      this.getCaptchaKey(id),
+    );
     if (storedText === text.toLowerCase()) {
-      this.captchaCache.delete(id); // CAPTCHA is single-use
+      await this.cacheManager.del(this.getCaptchaKey(id)); // CAPTCHA is single-use
       return true;
     }
     return false;

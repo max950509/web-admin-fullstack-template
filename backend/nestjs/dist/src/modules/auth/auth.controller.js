@@ -30,8 +30,8 @@ let AuthController = class AuthController {
     constructor(authService) {
         this.authService = authService;
     }
-    getCaptcha() {
-        return this.authService.generateCaptcha();
+    async getCaptcha() {
+        return await this.authService.generateCaptcha();
     }
     async login(req, loginDto) {
         return this.authService.login(req.user);
@@ -55,7 +55,7 @@ __decorate([
     (0, common_1.Get)('captcha'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getCaptcha", null);
 __decorate([
     (0, common_1.UseGuards)(captcha_guard_1.CaptchaGuard, (0, passport_1.AuthGuard)('local')),

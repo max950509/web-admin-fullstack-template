@@ -31,8 +31,8 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Get('captcha')
-  getCaptcha() {
-    return this.authService.generateCaptcha();
+  async getCaptcha() {
+    return await this.authService.generateCaptcha();
   }
 
   @UseGuards(CaptchaGuard, AuthGuard('local'))
