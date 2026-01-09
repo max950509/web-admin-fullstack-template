@@ -9,11 +9,11 @@ import {
 	useRouteError,
 } from "react-router-dom";
 import Login from "@/pages/login";
+import { $getProfile } from "@/services/auth.ts";
 import { getToken } from "@/utils/auth";
 import { checkPermissionByCode } from "@/utils/permission";
 import App from "../App.tsx";
 import { type AppRouteHandle, type AppRouteObject, allRoutes } from "./routes";
-import {$getProfile} from "@/services/auth.ts";
 
 const wrapKeepAlive = (
 	routes: AppRouteObject[],
@@ -48,6 +48,7 @@ const wrapKeepAlive = (
 
 // New Error Element to display permission errors
 function ErrorElement() {
+	// biome-ignore lint/suspicious/noExplicitAny: temporary ignore
 	const error = useRouteError() as any;
 	if (error.status === 403) {
 		return (
@@ -95,7 +96,7 @@ const rootLoader = async ({ request }: { request: Request }) => {
 			{ pathname },
 			import.meta.env.VITE_APP_BASE,
 		);
-        console.log('matches',  matches)
+		console.log("matches", matches);
 		if (matches) {
 			let codeToCheck: string | undefined;
 

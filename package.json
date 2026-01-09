@@ -1,7 +1,24 @@
 {
   "name": "web-admin-fullstack-template",
   "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky install",
+    "lint-staged": "lint-staged"
+  },
   "volta": {
     "node": "22.21.1"
+  },
+  "devDependencies": {
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.9"
+  },
+  "lint-staged": {
+    "backend/nestjs/**/*.{ts,js,tsx,jsx,json,md,yml,yaml}": [
+      "pnpm --filter backend-nestjs exec -- eslint --fix --"
+    ],
+    "frontend/react18/**/*.{ts,tsx,js,jsx,json,css,less,md}": [
+      "pnpm --filter frontend-react18 exec -- biome check --write --"
+    ]
   }
 }

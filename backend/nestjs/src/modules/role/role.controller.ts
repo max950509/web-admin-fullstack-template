@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Get,
@@ -15,12 +14,12 @@ import {
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
-import { JwtAuthGuard } from '../../core/guards/jwt-auth.guard';
+import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { PermissionsGuard } from '../../core/guards/permissions.guard'; // New guard
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator'; // New decorator
 
 @Controller('roles')
-@UseGuards(JwtAuthGuard, PermissionsGuard) // Use new PermissionsGuard
+@UseGuards(TokenAuthGuard, PermissionsGuard) // Use new PermissionsGuard
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 

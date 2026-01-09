@@ -1,4 +1,3 @@
-
 import {
   Controller,
   Get,
@@ -15,12 +14,12 @@ import {
 import { PermissionService } from './permission.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
-import { JwtAuthGuard } from '../../core/guards/jwt-auth.guard';
+import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { PermissionsGuard } from '../../core/guards/permissions.guard'; // New guard
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator'; // New decorator
 
 @Controller('permissions')
-@UseGuards(JwtAuthGuard, PermissionsGuard) // Use new PermissionsGuard
+@UseGuards(TokenAuthGuard, PermissionsGuard) // Use new PermissionsGuard
 export class PermissionController {
   constructor(private readonly permissionService: PermissionService) {}
 

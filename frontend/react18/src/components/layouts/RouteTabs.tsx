@@ -39,8 +39,7 @@ export const RouteTabs: React.FC = () => {
 		const { title, fixed } =
 			(curRouteMatch.route.handle as AppRouteHandle) || {};
 		const tabLabel =
-			(typeof title === "function" ? title(curRouteMatch) : title) ||
-			pathname;
+			(typeof title === "function" ? title(curRouteMatch) : title) || pathname;
 
 		addTab({
 			key: pathname,

@@ -9,12 +9,12 @@ import {
 	useNavigate,
 } from "react-router-dom";
 import logo from "@/assets/logo.svg";
+import Settings from "@/components/Settings.tsx";
+import { allRoutes } from "@/router/routes.tsx";
+import type { ProfileResponse } from "@/services/auth.ts";
 import { clearToken } from "@/utils/auth.ts";
 import { emitter, KEY_AUTH_EXPIRED } from "@/utils/mitt.ts";
-import type {ProfileResponse} from "@/services/auth.ts";
-import Settings from "@/components/Settings.tsx";
-import {generateMenus} from "@/utils/permission.ts";
-import {allRoutes} from "@/router/routes.tsx";
+import { generateMenus } from "@/utils/permission.ts";
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
 	console.log("AppLayout render"); // This will now re-render
@@ -61,10 +61,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 								{
 									key: "update-pwd",
 									label: (
-										<Settings
-                                            userInfo={userInfo}
-											trigger={<div>设置</div>}
-										/>
+										<Settings userInfo={userInfo} trigger={<div>设置</div>} />
 									),
 								},
 								{

@@ -1,27 +1,29 @@
 import {
-  Controller,
-  Post,
   Body,
+  Controller,
+  ExecutionContext,
   Get,
+  Post,
   UseGuards,
   Request,
-  HttpCode,
-  HttpStatus,
-  BadRequestException,
+  createParamDecorator,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { CaptchaGuard } from '../../core/guards/captcha.guard';
-import { JwtAuthGuard } from '../../core/guards/jwt-auth.guard';
+import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { OtpDto } from './dto/otp.dto';
 import { type User } from '@prisma/client';
+import type { Request as ExpressRequest } from 'express';
+import type { UserWithRoles } from './auth.service';
+
+type RequestWithUser<TUser> = ExpressRequest & { user: TUser };
 
 // A custom decorator to get the user from the request
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 export const ReqUser = createParamDecorator(
-  (data: unknown, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest();
+  (_data: unknown, ctx: ExecutionContext): unknown => {
+    const request = ctx.switchToHttp().getRequest<RequestWithUser<unknown>>();
     return request.user;
   },
 );
@@ -37,35 +39,41 @@ export class AuthController {
 
   @UseGuards(CaptchaGuard, AuthGuard('local'))
   @Post('login')
-  async login(@Request() req, @Body() loginDto: LoginDto) {
+  async login(
+    @Request() req: RequestWithUser<UserWithRoles>,
+    @Body() loginDto: LoginDto,
+  ) {
+    void loginDto;
     return this.authService.login(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Post('login/2fa')
   async loginWith2fa(@ReqUser() user: User, @Body() otpDto: OtpDto) {
-    // The user object here is from the temporary JWT issued after the first login step
+    // The user object here is from the temporary token issued after the first login step.
     return this.authService.loginWith2fa(user, otpDto.code);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Post('otp/generate')
   async generateOtp(@ReqUser() user: User) {
     // This endpoint should be called after a successful password login but before OTP is enabled.
     return this.authService.generateOtp(user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Post('otp/enable')
   async bindOtp(@ReqUser() user: User, @Body() otpDto: OtpDto) {
     return this.authService.enableOtp(user.id, otpDto.code);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(TokenAuthGuard)
   @Get('profile')
   getProfile(@ReqUser() user: User) {
-    // Thanks to JwtAuthGuard and JwtStrategy, req.user is populated
-    const { password, otpSecret, ...remaining } = user;
+    // TokenAuthGuard populates req.user from Redis-backed sessions.
+    const { password: _password, otpSecret: _otpSecret, ...remaining } = user;
+    void _password;
+    void _otpSecret;
     return remaining;
   }
 }

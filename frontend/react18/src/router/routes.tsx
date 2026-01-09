@@ -28,27 +28,27 @@ export const allRoutes: AppRouteObject[] = [
 	{
 		path: "/system",
 		element: <Outlet />,
-        handle: {
-            title: "系统管理",
-        },
+		handle: {
+			title: "系统管理",
+		},
 		children: [
 			{ index: true, element: <Navigate to="accounts" replace /> },
 			{
 				path: "accounts",
 				element: <Accounts />,
 				handle: {
-                    title: "账号管理",
+					title: "账号管理",
 					code: "read:account",
 				},
 			},
-            {
-                path: "accounts/new",
-                element: <Accounts />,
-                handle: {
-                    title: "新增账号",
-                    code: "add:account",
-                },
-            },
+			{
+				path: "accounts/new",
+				element: <Accounts />,
+				handle: {
+					title: "新增账号",
+					code: "add:account",
+				},
+			},
 		],
-	}
+	},
 ];

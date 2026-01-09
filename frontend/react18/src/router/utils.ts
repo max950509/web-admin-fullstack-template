@@ -20,14 +20,18 @@ export function filterAccessibleRoutes(
 		// 判断当前路由是否可访问
 		// 1. 如果路由不需要权限 (没有 handle.code)，则可访问
 		// 2. 如果路由需要权限，检查用户权限列表是否包含该code
-		const hasPermission = !requiredPermission || permissions.includes(requiredPermission);
+		const hasPermission =
+			!requiredPermission || permissions.includes(requiredPermission);
 
 		if (hasPermission) {
 			// 如果当前路由有子路由，递归过滤子路由
 			if (newRoute.children && newRoute.children.length > 0) {
-				newRoute.children = filterAccessibleRoutes(newRoute.children, permissions);
+				newRoute.children = filterAccessibleRoutes(
+					newRoute.children,
+					permissions,
+				);
 				// 如果过滤后，父路由的子路由变为空，且该父路由自身没有作为独立页面(没有element)，则不添加该父路由
-                // 如果父路由本身是个页面（例如有Outlet），即使子路由为空也应该保留
+				// 如果父路由本身是个页面（例如有Outlet），即使子路由为空也应该保留
 				if (newRoute.children.length === 0 && !newRoute.element) {
 					return;
 				}
