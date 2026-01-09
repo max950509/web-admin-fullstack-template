@@ -1,4 +1,4 @@
-import { LockOutlined, UserOutlined } from "@ant-design/icons";
+import { LockOutlined, ReloadOutlined, UserOutlined } from "@ant-design/icons";
 import {Alert, Button, Form, Input, Modal, message, Space, Typography} from "antd";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +12,7 @@ const LoginPage: React.FC = () => {
 	const [searchParams] = useSearchParams();
 	const [form] = Form.useForm();
 	const [loading, setLoading] = useState<boolean>(false);
+	const [captchaLoading, setCaptchaLoading] = useState<boolean>(false);
 	const [captcha, setCaptcha] = useState({
         id: '',
         svg: '',
@@ -19,8 +20,14 @@ const LoginPage: React.FC = () => {
 	const hasFocusedRef = useRef(false);
 
     const getCaptcha = async () => {
-        const { data } = await $getCaptcha();
-        setCaptcha(data);
+        if (captchaLoading) return;
+        setCaptchaLoading(true);
+        try {
+            const { data } = await $getCaptcha();
+            setCaptcha(data);
+        } finally {
+            setCaptchaLoading(false);
+        }
     }
 
 	const handleLoginSuccess = () => {
@@ -120,6 +127,9 @@ const LoginPage: React.FC = () => {
                 setToken(accessToken);
                 handleLoginSuccess();
             }
+		} catch (error) {
+            await getCaptcha();
+            form.setFieldsValue({ captcha: "" });
 		} finally {
 			setLoading(false);
 		}
@@ -163,11 +173,32 @@ const LoginPage: React.FC = () => {
                             size="large"
                             placeholder="验证码"
                         />
-                        <div
-                            // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-                            dangerouslySetInnerHTML={{ __html: captcha.svg }}
-                            className="captcha"
-                        />
+                        <div className="captcha-box" aria-busy={captchaLoading}>
+                            <div
+                                // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
+                                dangerouslySetInnerHTML={{ __html: captcha.svg }}
+                                className="captcha-image"
+                                onClick={getCaptcha}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                        getCaptcha();
+                                    }
+                                }}
+                                role="button"
+                                tabIndex={0}
+                            />
+                            <Button
+                                className="captcha-link"
+                                type="link"
+                                size="small"
+                                icon={<ReloadOutlined />}
+                                onClick={getCaptcha}
+                                loading={captchaLoading}
+                                aria-label="刷新验证码"
+                            >
+                                换一张
+                            </Button>
+                        </div>
                     </Space>
 
                 </Form.Item>
