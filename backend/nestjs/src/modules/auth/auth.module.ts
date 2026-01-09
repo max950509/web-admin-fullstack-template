@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { CacheModule } from '@nestjs/cache-manager';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -9,6 +9,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LocalStrategy } from './strategies/local.strategy';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import KeyvRedis from '@keyv/redis';
+import Keyv from 'keyv';
 
 @Module({
   imports: [
@@ -19,16 +20,34 @@ import KeyvRedis from '@keyv/redis';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
+        const logger = new Logger('CacheModule');
         const url = configService.get<string>('REDIS_URL');
-        const host = configService.get<string>('REDIS_HOST');
-        const port = configService.get<string>('REDIS_PORT');
+        const host = configService.get<string>('REDIS_HOST', '127.0.0.1');
+        const port = configService.get<string>('REDIS_PORT', '6379');
         const password = configService.get<string>('REDIS_PASSWORD');
-        const db = configService.get<string>('REDIS_DB');
+        const db = configService.get<string>('REDIS_DB', '0');
         const auth = password ? `:${encodeURIComponent(password)}@` : '';
         const dbSegment = db ? `/${db}` : '';
         const redisUrl = url ?? `redis://${auth}${host}:${port}${dbSegment}`;
+        if (url) {
+          try {
+            const parsed = new URL(url);
+            const safePassword = parsed.password ? '***' : '';
+            const safeUser = parsed.username ? `${parsed.username}` : '';
+            const authSegment =
+              safeUser || safePassword
+                ? `${safeUser}${safePassword ? `:${safePassword}` : ''}@`
+                : '';
+            const safeUrl = `${parsed.protocol}//${authSegment}${parsed.host}${parsed.pathname}`;
+            logger.log(`Redis cache store: ${safeUrl}`);
+          } catch {
+            logger.log('Redis cache store: using REDIS_URL (invalid URL format)');
+          }
+        } else {
+          logger.log(`Redis cache store: redis://${host}:${port}/${db}`);
+        }
         return {
-          store: new KeyvRedis(redisUrl),
+          stores: [new Keyv({ store: new KeyvRedis(redisUrl) })],
         };
       },
     }),
