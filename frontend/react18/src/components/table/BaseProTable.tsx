@@ -1,12 +1,14 @@
 import { ProTable, type ProTableProps } from "@ant-design/pro-components";
 
 export interface MyProTableProps<T, U> extends ProTableProps<T, U> {
-	requestApi?: (params: U & { current?: number; pageSize?: number }) => Promise<
-		API.Response<{
-			records: T[];
+	requestApi?: (
+		params: U & { current?: number; pageSize?: number },
+	) => Promise<{
+		data: {
+			list: T[];
 			total: number;
-		}>
-	>;
+		};
+	}>;
 }
 
 export default <
@@ -32,15 +34,14 @@ export default <
 				requestApi
 					? async (params) => {
 							const { current, pageSize, ...restParams } = params;
-							const { data, code } = await requestApi({
+							const { data } = await requestApi({
 								...restParams,
-								pageNo: current,
+								page: current,
 								pageSize,
 							} as U & { current?: number; pageSize?: number });
 
 							return {
-								data: data.records,
-								success: !+code,
+								data: data.list,
 								total: data.total,
 							};
 						}

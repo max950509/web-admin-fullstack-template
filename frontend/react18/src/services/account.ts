@@ -10,6 +10,18 @@ export interface AccountItem {
 	isOtpEnabled: boolean;
 }
 
+export interface PageResponse<T> {
+	list: T[];
+	total: number;
+	page: number;
+	pageSize: number;
+}
+
+export interface AccountPageQuery {
+	page?: number;
+	pageSize?: number;
+}
+
 export interface CreateAccountParams {
 	username: string;
 	password: string;
@@ -22,7 +34,8 @@ export interface UpdateAccountParams {
 	roleIds?: number[];
 }
 
-export const $getAccounts = async () => request.get<AccountItem[]>("/users");
+export const $getAccounts = async (params?: AccountPageQuery) =>
+	request.get<PageResponse<AccountItem>>("/users", { params });
 
 export const $getAccount = async (id: number) =>
 	request.get<AccountItem>(`/users/${id}`);

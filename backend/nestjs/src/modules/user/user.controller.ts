@@ -9,11 +9,13 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { QueryUserDto } from './dto/query-user.dto';
 import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { PermissionsGuard } from '../../core/guards/permissions.guard';
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator';
@@ -31,8 +33,8 @@ export class UserController {
 
   @Get()
   @CheckPermissions('read', 'account')
-  findAll() {
-    return this.userService.findAllAccounts();
+  findAll(@Query() queryUserDto: QueryUserDto) {
+    return this.userService.findAccountsPage(queryUserDto);
   }
 
   @Get(':id')

@@ -1,5 +1,5 @@
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button } from "antd";
+import { Button, message } from "antd";
 import { useRef } from "react";
 import { BaseProTable, DeleteAction, FormModal } from "@/components/table";
 import {
@@ -11,14 +11,17 @@ import {
 export default () => {
 	const actionRef = useRef<ActionType | null>(null);
 
-	const handleCreate = async () => {
-		await $createAccount({});
+	const handleCreate = async (params: AccountItem) => {
+		await $createAccount(params);
+		message.success("创建成功");
+		actionRef.current?.reload();
 	};
 	const columns: ProColumns<AccountItem>[] = [
 		{
 			title: "ID",
 			dataIndex: "id",
-			width: 80,
+			hideInForm: true,
+			width: 50,
 			search: false,
 			render: (text, record) => {
 				return (
@@ -34,7 +37,7 @@ export default () => {
 		{
 			title: "账号名",
 			dataIndex: "username",
-			width: 160,
+			width: 80,
 			formItemProps: {
 				rules: [
 					{
@@ -47,6 +50,7 @@ export default () => {
 			title: "密码",
 			dataIndex: "password",
 			hideInSearch: true,
+			hideInTable: true,
 			width: 120,
 			formItemProps: {
 				rules: [
@@ -60,7 +64,7 @@ export default () => {
 			title: "操作",
 			valueType: "option",
 			fixed: "right",
-			width: 80,
+			width: 50,
 			render: (_) => <DeleteAction tableRef={actionRef} />,
 		},
 	];
@@ -80,6 +84,7 @@ export default () => {
 			]}
 			requestApi={$getAccounts}
 			columns={columns}
+			scroll={{ x: "100%" }}
 		/>
 	);
 };

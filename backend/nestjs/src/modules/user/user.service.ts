@@ -4,6 +4,12 @@ import { User, Role, Prisma, Permission } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  createPageResult,
+  getPaginationArgs,
+} from '../../core/utils/pagination';
+import type { PageResult } from '../../core/types/page-result';
+import { QueryUserDto } from './dto/query-user.dto';
 
 type UserWithRoles = User & { roles: Role[] };
 type SafeUser = Omit<User, 'password' | 'otpSecret'> & { roles: Role[] };
@@ -62,6 +68,27 @@ export class UserService {
       include: { roles: true },
     });
     return users.map((user) => this.sanitizeUser(user));
+  }
+
+  async findAccountsPage(query: QueryUserDto): Promise<PageResult<SafeUser>> {
+    const { skip, take } = getPaginationArgs(query);
+    const total = await this.prisma.user.count();
+    const where: Prisma.UserWhereInput = {};
+    if (query.username) {
+      where.username = { contains: query.username, mode: 'insensitive' };
+    }
+    if (query.roleIds) {
+      where.roles = { some: { id: { in: query.roleIds } } };
+    }
+    const users = await this.prisma.user.findMany({
+      where,
+      include: { roles: true },
+      orderBy: { id: 'desc' },
+      skip,
+      take,
+    });
+    const list = users.map((user) => this.sanitizeUser(user));
+    return createPageResult(list, total, query);
   }
 
   async findAccountById(id: number): Promise<SafeUser> {
