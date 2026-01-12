@@ -46,7 +46,7 @@ export const allRoutes: AppRouteObject[] = [
 				element: <Accounts />,
 				handle: {
 					title: "新增账号",
-					code: "add:account",
+					code: "create:account",
 				},
 			},
 		],

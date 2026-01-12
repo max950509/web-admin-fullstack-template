@@ -36,8 +36,12 @@ model Role {
 
 model Permission {
   id       Int    @id @default(autoincrement())
+  name     String @default("")
+  type     String @default("action") // menu | page | action
   action   String // e.g., "read", "write", "create", "delete"
   resource String // e.g., "dashboard_menu", "user_management_page", "user_create_button"
+  parentId Int?
+  sort     Int    @default(0)
 
   roles Role[] @relation("RolePermissions")
 

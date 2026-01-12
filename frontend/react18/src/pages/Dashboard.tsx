@@ -1,9 +1,9 @@
+import { RolePermissionEditor } from "@/components/RolePermissionEditor";
+
 function Dashboard() {
 	return (
-		<div>
-			<h2>Dashboard</h2>
-			<p>Welcome to the protected dashboard!</p>
-			<input placeholder="Search..." />
+		<div style={{ padding: 24 }}>
+			<RolePermissionEditor />
 		</div>
 	);
 }

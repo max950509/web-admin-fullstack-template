@@ -47,8 +47,12 @@ export interface ProfileResponse {
 		name: string;
 		permissions: {
 			id: number;
+			name: string;
+			type: "menu" | "page" | "action";
 			action: string;
 			resource: string;
+			parentId: number | null;
+			sort: number;
 		}[];
 	}[];
 	isOtpEnabled: boolean;

@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "permissions" ADD COLUMN     "name" TEXT NOT NULL DEFAULT '',
+ADD COLUMN     "parentId" INTEGER,
+ADD COLUMN     "sort" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "type" TEXT NOT NULL DEFAULT 'action';

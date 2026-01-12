@@ -16,44 +16,137 @@ async function main() {
   await prisma.permission.deleteMany({});
 
   // Create permissions
-  const viewDashboardPermission = await prisma.permission.create({
-    data: { action: 'view', resource: 'dashboard_menu' },
+  const systemMenu = await prisma.permission.create({
+    data: {
+      name: '系统管理',
+      type: 'menu',
+      action: 'menu',
+      resource: 'system',
+      sort: 1,
+    },
   });
-  const createUserPermission = await prisma.permission.create({
-    data: { action: 'create', resource: 'user_button' },
+
+  const accountPage = await prisma.permission.create({
+    data: {
+      name: '账号管理',
+      type: 'page',
+      action: 'read',
+      resource: 'account',
+      parentId: systemMenu.id,
+      sort: 1,
+    },
   });
-  const readUserPermission = await prisma.permission.create({
-    data: { action: 'read', resource: 'user_page' },
+  const accountCreate = await prisma.permission.create({
+    data: {
+      name: '新增账号',
+      type: 'action',
+      action: 'create',
+      resource: 'account',
+      parentId: accountPage.id,
+      sort: 1,
+    },
   });
-  const updateUserPermission = await prisma.permission.create({
-    data: { action: 'update', resource: 'user_page' },
+  const accountUpdate = await prisma.permission.create({
+    data: {
+      name: '编辑账号',
+      type: 'action',
+      action: 'update',
+      resource: 'account',
+      parentId: accountPage.id,
+      sort: 2,
+    },
   });
-  const deleteUserPermission = await prisma.permission.create({
-    data: { action: 'delete', resource: 'user_page' },
+  const accountDelete = await prisma.permission.create({
+    data: {
+      name: '删除账号',
+      type: 'action',
+      action: 'delete',
+      resource: 'account',
+      parentId: accountPage.id,
+      sort: 3,
+    },
   });
-  const readPermissionManagementPermission = await prisma.permission.create({
-    data: { action: 'read', resource: 'permission_management' },
+
+  const rolePage = await prisma.permission.create({
+    data: {
+      name: '角色管理',
+      type: 'page',
+      action: 'read',
+      resource: 'role',
+      parentId: systemMenu.id,
+      sort: 2,
+    },
   });
-  const createPermissionManagementPermission = await prisma.permission.create({
-    data: { action: 'create', resource: 'permission_management' },
+  const roleCreate = await prisma.permission.create({
+    data: {
+      name: '新增角色',
+      type: 'action',
+      action: 'create',
+      resource: 'role',
+      parentId: rolePage.id,
+      sort: 1,
+    },
   });
-  const updatePermissionManagementPermission = await prisma.permission.create({
-    data: { action: 'update', resource: 'permission_management' },
+  const roleUpdate = await prisma.permission.create({
+    data: {
+      name: '编辑角色',
+      type: 'action',
+      action: 'update',
+      resource: 'role',
+      parentId: rolePage.id,
+      sort: 2,
+    },
   });
-  const deletePermissionManagementPermission = await prisma.permission.create({
-    data: { action: 'delete', resource: 'permission_management' },
+  const roleDelete = await prisma.permission.create({
+    data: {
+      name: '删除角色',
+      type: 'action',
+      action: 'delete',
+      resource: 'role',
+      parentId: rolePage.id,
+      sort: 3,
+    },
   });
-  const readRoleManagementPermission = await prisma.permission.create({
-    data: { action: 'read', resource: 'role_management' },
+
+  const permissionPage = await prisma.permission.create({
+    data: {
+      name: '权限管理',
+      type: 'page',
+      action: 'read',
+      resource: 'permission',
+      parentId: systemMenu.id,
+      sort: 3,
+    },
   });
-  const createRoleManagementPermission = await prisma.permission.create({
-    data: { action: 'create', resource: 'role_management' },
+  const permissionCreate = await prisma.permission.create({
+    data: {
+      name: '新增权限',
+      type: 'action',
+      action: 'create',
+      resource: 'permission',
+      parentId: permissionPage.id,
+      sort: 1,
+    },
   });
-  const updateRoleManagementPermission = await prisma.permission.create({
-    data: { action: 'update', resource: 'role_management' },
+  const permissionUpdate = await prisma.permission.create({
+    data: {
+      name: '编辑权限',
+      type: 'action',
+      action: 'update',
+      resource: 'permission',
+      parentId: permissionPage.id,
+      sort: 2,
+    },
   });
-  const deleteRoleManagementPermission = await prisma.permission.create({
-    data: { action: 'delete', resource: 'role_management' },
+  const permissionDelete = await prisma.permission.create({
+    data: {
+      name: '删除权限',
+      type: 'action',
+      action: 'delete',
+      resource: 'permission',
+      parentId: permissionPage.id,
+      sort: 3,
+    },
   });
 
   console.log('Created permissions...');
@@ -64,19 +157,18 @@ async function main() {
       name: 'admin',
       permissions: {
         connect: [
-          { id: viewDashboardPermission.id },
-          { id: createUserPermission.id },
-          { id: readUserPermission.id },
-          { id: updateUserPermission.id },
-          { id: deleteUserPermission.id },
-          { id: readPermissionManagementPermission.id },
-          { id: createPermissionManagementPermission.id },
-          { id: updatePermissionManagementPermission.id },
-          { id: deletePermissionManagementPermission.id },
-          { id: readRoleManagementPermission.id },
-          { id: createRoleManagementPermission.id },
-          { id: updateRoleManagementPermission.id },
-          { id: deleteRoleManagementPermission.id },
+          { id: accountPage.id },
+          { id: accountCreate.id },
+          { id: accountUpdate.id },
+          { id: accountDelete.id },
+          { id: rolePage.id },
+          { id: roleCreate.id },
+          { id: roleUpdate.id },
+          { id: roleDelete.id },
+          { id: permissionPage.id },
+          { id: permissionCreate.id },
+          { id: permissionUpdate.id },
+          { id: permissionDelete.id },
         ],
       },
     },
@@ -86,10 +178,7 @@ async function main() {
     data: {
       name: 'user',
       permissions: {
-        connect: [
-          { id: viewDashboardPermission.id },
-          { id: readUserPermission.id },
-        ],
+        connect: [{ id: accountPage.id }],
       },
     },
   });
