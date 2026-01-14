@@ -1,6 +1,7 @@
+import type { PageQuery, PageResponse } from "@/types";
 import request from "@/utils/request";
 
-export interface AccountItem {
+export interface Account {
 	id: number;
 	username: string;
 	roles: {
@@ -10,16 +11,8 @@ export interface AccountItem {
 	isOtpEnabled: boolean;
 }
 
-export interface PageResponse<T> {
-	list: T[];
-	total: number;
-	page: number;
-	pageSize: number;
-}
-
-export interface AccountPageQuery {
-	page?: number;
-	pageSize?: number;
+export interface AccountQuery extends PageQuery {
+	username?: string;
 }
 
 export interface CreateAccountParams {
@@ -29,22 +22,22 @@ export interface CreateAccountParams {
 }
 
 export interface UpdateAccountParams {
+	id: number;
 	username?: string;
-	password?: string;
 	roleIds?: number[];
 }
 
-export const $getAccounts = async (params?: AccountPageQuery) =>
-	request.get<PageResponse<AccountItem>>("/users", { params });
+export const $getAccounts = async (params?: AccountQuery) =>
+	request.get<PageResponse<Account>>("/users", { params });
 
 export const $getAccount = async (id: number) =>
-	request.get<AccountItem>(`/users/${id}`);
+	request.get<Account>(`/users/${id}`);
 
 export const $createAccount = async (params: CreateAccountParams) =>
-	request.post<AccountItem>("/users", params);
+	request.post<Account>("/users", params);
 
 export const $updateAccount = async (id: number, params: UpdateAccountParams) =>
-	request.patch<AccountItem>(`/users/${id}`, params);
+	request.patch<Account>(`/users/${id}`, params);
 
 export const $deleteAccount = async (id: number) =>
 	request.delete<void>(`/users/${id}`);

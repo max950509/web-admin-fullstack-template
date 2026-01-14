@@ -3,6 +3,7 @@ import { PageQueryDto } from '../../../core/dto/page-query.dto';
 
 export class QueryUserDto extends PageQueryDto {
   @IsString()
+  @IsOptional()
   username?: string;
 
   @IsArray()

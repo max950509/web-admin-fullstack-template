@@ -1,22 +1,34 @@
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
-import { Button, message } from "antd";
+import { Button, message, Popconfirm, Space } from "antd";
 import { useRef } from "react";
-import { BaseProTable, DeleteAction, FormModal } from "@/components/table";
+import { BaseProTable, FormModal } from "@/components/table";
 import {
 	$createAccount,
+	$deleteAccount,
 	$getAccounts,
-	type AccountItem,
-} from "@/services/account.ts";
+	type Account,
+	type CreateAccountParams,
+	type UpdateAccountParams,
+} from "@/services/account";
+
+type AccountSchema = Account & CreateAccountParams & UpdateAccountParams;
 
 export default () => {
 	const actionRef = useRef<ActionType | null>(null);
 
-	const handleCreate = async (params: AccountItem) => {
+	const handleCreate = async (params: AccountSchema) => {
 		await $createAccount(params);
 		message.success("创建成功");
 		actionRef.current?.reload();
 	};
-	const columns: ProColumns<AccountItem>[] = [
+
+	const handleDelete = async (record: AccountSchema) => {
+		await $deleteAccount(record.id);
+		message.success("删除成功");
+		actionRef.current?.reload();
+	};
+
+	const columns: ProColumns<AccountSchema>[] = [
 		{
 			title: "ID",
 			dataIndex: "id",
@@ -26,6 +38,7 @@ export default () => {
 			render: (text, record) => {
 				return (
 					<FormModal
+						title="账号详情"
 						trigger={<a>{text}</a>}
 						record={record}
 						columns={columns}
@@ -52,12 +65,23 @@ export default () => {
 			hideInSearch: true,
 			hideInTable: true,
 			width: 120,
-			formItemProps: {
-				rules: [
-					{
-						required: true,
-					},
-				],
+			formItemProps: (form) => {
+				// 如果是编辑模式（存在记录），则不显示密码字段
+				if (form.getFieldValue("id")) {
+					// 编辑模式下隐藏密码字段
+					return {
+						hidden: true,
+						rules: [],
+					};
+				}
+				// 新增模式下显示密码字段并要求输入
+				return {
+					rules: [
+						{
+							required: true,
+						},
+					],
+				};
 			},
 		},
 		{
@@ -65,15 +89,27 @@ export default () => {
 			valueType: "option",
 			fixed: "right",
 			width: 50,
-			render: (_) => <DeleteAction tableRef={actionRef} />,
+			render: (_, record) => (
+				<Space>
+					<FormModal
+						title="编辑账号"
+						trigger={<a>编辑</a>}
+						record={record}
+						columns={columns}
+					/>
+					<Popconfirm title="确认删除吗" onConfirm={() => handleDelete(record)}>
+						<a>删除</a>
+					</Popconfirm>
+				</Space>
+			),
 		},
 	];
 
 	return (
-		<BaseProTable<AccountItem>
+		<BaseProTable<AccountSchema>
 			actionRef={actionRef}
 			toolBarRender={() => [
-				<FormModal<AccountItem>
+				<FormModal<AccountSchema>
 					key="1"
 					title="新增账号"
 					tableRef={actionRef}
