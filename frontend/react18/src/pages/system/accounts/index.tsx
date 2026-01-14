@@ -1,126 +1,171 @@
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
+import {
+	BetaSchemaForm,
+	type ProFormColumnsType,
+} from "@ant-design/pro-components";
 import { Button, message, Popconfirm, Space } from "antd";
-import { useRef } from "react";
-import { BaseProTable, FormModal } from "@/components/table";
+import { useMemo, useRef } from "react";
+import BaseProTable from "@/components/BaseProTable.tsx";
+import DescModal from "@/components/DescModal.tsx";
 import {
 	$createAccount,
 	$deleteAccount,
 	$getAccounts,
-	type Account,
-	type CreateAccountParams,
-	type UpdateAccountParams,
+	$updateAccount,
+	type AccountFormParams,
+	type AccountRow,
 } from "@/services/account";
+import { patchSchema } from "@/utils/common.ts";
+import { COMMON_MODAL_PROPS } from "@/utils/constants.ts";
 
-type AccountSchema = Account & CreateAccountParams & UpdateAccountParams;
+// 替换为你的真实角色列表
+const ROLE_OPTIONS: { label: string; value: number }[] = [
+	// { label: "管理员", value: 1 },
+	// { label: "运营", value: 2 },
+];
 
-export default () => {
+export default function AccountPage() {
 	const actionRef = useRef<ActionType | null>(null);
 
-	const handleCreate = async (params: AccountSchema) => {
-		await $createAccount(params);
-		message.success("创建成功");
-		actionRef.current?.reload();
-	};
-
-	const handleDelete = async (record: AccountSchema) => {
-		await $deleteAccount(record.id);
-		message.success("删除成功");
-		actionRef.current?.reload();
-	};
-
-	const columns: ProColumns<AccountSchema>[] = [
-		{
-			title: "ID",
-			dataIndex: "id",
-			hideInForm: true,
-			width: 50,
-			search: false,
-			render: (text, record) => {
-				return (
-					<FormModal
-						title="账号详情"
+	// CRUD baseColumns
+	const baseColumns = useMemo<ProColumns<AccountRow>[]>(() => {
+		return [
+			{
+				title: "ID",
+				dataIndex: "id",
+				hideInSearch: true,
+				hideInForm: true,
+				render: (text, record) => (
+					<DescModal<AccountRow>
 						trigger={<a>{text}</a>}
-						record={record}
-						columns={columns}
-						disabled={true}
+						title="账号详情"
+						data={record}
+						columns={descColumns}
 					/>
-				);
+				),
 			},
-		},
-		{
-			title: "账号名",
-			dataIndex: "username",
-			width: 80,
-			formItemProps: {
-				rules: [
-					{
-						required: true,
-					},
-				],
+			{
+				title: "账号名",
+				dataIndex: "username",
+				formItemProps: { rules: [{ required: true, message: "请输入账号名" }] },
 			},
-		},
-		{
-			title: "密码",
-			dataIndex: "password",
-			hideInSearch: true,
-			hideInTable: true,
-			width: 120,
-			formItemProps: (form) => {
-				// 如果是编辑模式（存在记录），则不显示密码字段
-				if (form.getFieldValue("id")) {
-					// 编辑模式下隐藏密码字段
-					return {
-						hidden: true,
-						rules: [],
-					};
-				}
-				// 新增模式下显示密码字段并要求输入
-				return {
-					rules: [
-						{
-							required: true,
-						},
-					],
-				};
+			{
+				title: "密码",
+				dataIndex: "password",
+				valueType: "password",
+				hideInTable: true,
+				hideInSearch: true,
 			},
-		},
-		{
+			{
+				title: "角色",
+				dataIndex: "roleIds",
+				valueType: "select",
+				fieldProps: {
+					mode: "multiple",
+					options: ROLE_OPTIONS,
+					placeholder: "请选择角色",
+				},
+				formItemProps: { rules: [{ required: true, message: "请选择角色" }] },
+			},
+		];
+	}, []);
+
+	// SchemaForm 基础列：从 baseColumns 派生（可作数据处理，这里暂无需要）
+	const baseFormCols = useMemo(() => {
+		return baseColumns as ProFormColumnsType<AccountFormParams>[];
+	}, [baseColumns]);
+
+	const createFormCols = useMemo(
+		() =>
+			patchSchema(baseFormCols, {
+				// 新增需要密码
+				password: {
+					hideInForm: false,
+					formItemProps: { rules: [{ required: true, message: "请输入密码" }] },
+				},
+			}),
+		[baseFormCols],
+	);
+
+	const updateFormCols = useMemo(
+		() =>
+			patchSchema(baseFormCols, {
+				id: { hideInForm: false, fieldProps: { disabled: true } },
+				// 修改不需要密码
+				password: { hideInForm: true },
+			}),
+		[baseFormCols],
+	);
+
+	// 详情：极简（不做 map），直接 filter + cast
+	const descColumns = useMemo(() => {
+		return baseColumns
+			.filter((c) => c.dataIndex !== "password")
+			.filter((c) => !c.hideInTable) as any;
+	}, [baseColumns]);
+
+	// Table 列：直接复用 baseColumns，再 append 操作列
+	const tableColumns = useMemo<ProColumns<AccountRow>[]>(() => {
+		const optionCol: ProColumns<AccountRow> = {
 			title: "操作",
 			valueType: "option",
 			fixed: "right",
-			width: 50,
+			width: 160,
 			render: (_, record) => (
 				<Space>
-					<FormModal
+					<BetaSchemaForm<AccountFormParams>
+						layoutType="ModalForm"
 						title="编辑账号"
 						trigger={<a>编辑</a>}
-						record={record}
-						columns={columns}
+						columns={updateFormCols}
+						initialValues={record}
+						onFinish={async (values) => {
+							await $updateAccount(record.id, values);
+							message.success("更新成功");
+							actionRef.current?.reload();
+							return true;
+						}}
+						{...COMMON_MODAL_PROPS}
 					/>
-					<Popconfirm title="确认删除吗" onConfirm={() => handleDelete(record)}>
+					<Popconfirm
+						title="确认删除吗"
+						onConfirm={async () => {
+							await $deleteAccount(record.id as any);
+							message.success("删除成功");
+							actionRef.current?.reload();
+						}}
+					>
 						<a>删除</a>
 					</Popconfirm>
 				</Space>
 			),
-		},
-	];
+		};
+
+		return [...baseColumns, optionCol];
+	}, [baseColumns, updateFormCols]);
 
 	return (
-		<BaseProTable<AccountSchema>
+		<BaseProTable<AccountRow, Record<string, any>>
 			actionRef={actionRef}
 			toolBarRender={() => [
-				<FormModal<AccountSchema>
-					key="1"
+				<BetaSchemaForm<AccountFormParams>
+					key="create"
+					layoutType="ModalForm"
 					title="新增账号"
-					tableRef={actionRef}
 					trigger={<Button type="primary">新建</Button>}
-					service={handleCreate}
-					columns={columns}
+					columns={createFormCols}
+					onFinish={async (values) => {
+						await $createAccount(values as AccountFormParams);
+						message.success("创建成功");
+						actionRef.current?.reload();
+						return true;
+					}}
+					{...COMMON_MODAL_PROPS}
 				/>,
 			]}
 			requestApi={$getAccounts}
-			columns={columns}
+			columns={tableColumns}
 			scroll={{ x: "100%" }}
 		/>
 	);
-};
+}
