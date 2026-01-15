@@ -38,7 +38,6 @@ export class RoleController {
   }
 
   @Get('options')
-  @CheckPermissions('read', 'role')
   findOptions() {
     return this.roleService.findRolesOptions();
   }

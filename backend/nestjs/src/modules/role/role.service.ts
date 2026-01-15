@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Role, Prisma } from '@prisma/client';
+import { Role, Prisma, Permission } from '@prisma/client';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { QueryRoleDto } from './dto/query-role.dto';
@@ -10,22 +10,40 @@ import {
 } from '../../core/utils/pagination';
 import type { PageResult } from '../../core/types/page-result';
 
+const rolePermissionInclude = {
+  rolePermissions: { include: { permission: true } },
+} as const;
+
+type RoleWithPermissionLinks = Prisma.RoleGetPayload<{
+  include: typeof rolePermissionInclude;
+}>;
+
 @Injectable()
 export class RoleService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRole(createRoleDto: CreateRoleDto): Promise<Role> {
+  async createRole(
+    createRoleDto: CreateRoleDto,
+  ): Promise<Role & { permissions: Permission[] }> {
     const { name, permissionIds } = createRoleDto;
 
-    return this.prisma.role.create({
+    const role = await this.prisma.role.create({
       data: {
         name,
-        permissions: {
-          connect: permissionIds.map((id) => ({ id })),
-        },
+        rolePermissions: permissionIds.length
+          ? {
+              // Create join-table rows to link this role to existing permissions.
+              create: permissionIds.map((permissionId) => ({
+                // Set RolePermission.permissionId via the relation field.
+                permission: { connect: { id: permissionId } },
+              })),
+            }
+          : undefined,
       },
-      include: { permissions: true },
+      // Include linked permissions in the returned role record.
+      include: rolePermissionInclude,
     });
+    return this.mapPermissions(role);
   }
 
   async findRolesPage(query: QueryRoleDto): Promise<PageResult<Role>> {
@@ -37,7 +55,6 @@ export class RoleService {
     const total = await this.prisma.role.count({ where });
     const list = await this.prisma.role.findMany({
       where,
-      include: { permissions: true },
       orderBy: { id: 'desc' },
       skip,
       take,
@@ -45,18 +62,23 @@ export class RoleService {
     return createPageResult(list, total, query);
   }
 
-  async findRoleById(id: number): Promise<Role | null> {
+  async findRoleById(
+    id: number,
+  ): Promise<Role & { permissions: Permission[] }> {
     const role = await this.prisma.role.findUnique({
       where: { id },
-      include: { permissions: true },
+      include: rolePermissionInclude,
     });
     if (!role) {
       throw new NotFoundException(`Role with ID #${id} not found`);
     }
-    return role;
+    return this.mapPermissions(role);
   }
 
-  async updateRole(id: number, updateRoleDto: UpdateRoleDto): Promise<Role> {
+  async updateRole(
+    id: number,
+    updateRoleDto: UpdateRoleDto,
+  ): Promise<Role & { permissions: Permission[] }> {
     const { name, permissionIds } = updateRoleDto;
     const data: Prisma.RoleUpdateInput = {};
 
@@ -65,17 +87,27 @@ export class RoleService {
     }
 
     if (permissionIds) {
-      data.permissions = {
-        set: permissionIds.map((id) => ({ id })),
+      data.rolePermissions = {
+        // Reset join-table rows to match the incoming permission set.
+        deleteMany: {},
+        ...(permissionIds.length
+          ? {
+              create: permissionIds.map((permissionId) => ({
+                // Connect each permission id to the role.
+                permission: { connect: { id: permissionId } },
+              })),
+            }
+          : {}),
       };
     }
 
     try {
-      return await this.prisma.role.update({
+      const role = await this.prisma.role.update({
         where: { id },
         data,
-        include: { permissions: true },
+        include: rolePermissionInclude,
       });
+      return this.mapPermissions(role);
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -100,5 +132,15 @@ export class RoleService {
       },
       orderBy: { id: 'desc' },
     });
+  }
+
+  private mapPermissions(
+    role: RoleWithPermissionLinks,
+  ): Role & { permissions: Permission[] } {
+    const { rolePermissions, ...rest } = role;
+    return {
+      ...rest,
+      permissions: rolePermissions.map((item) => item.permission),
+    };
   }
 }

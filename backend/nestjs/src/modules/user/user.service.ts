@@ -12,7 +12,29 @@ import type { PageResult } from '../../core/types/page-result';
 import { QueryUserDto } from './dto/query-user.dto';
 
 type UserWithRoles = User & { roles: Role[] };
+type RoleWithPermissions = Role & { permissions: Permission[] };
+type UserWithRolesAndPermissions = User & { roles: RoleWithPermissions[] };
 type SafeUser = Omit<User, 'password' | 'otpSecret'> & { roles: Role[] };
+
+type UserWithRoleLinks = Prisma.UserGetPayload<{
+  include: { userRoles: { include: { role: true } } };
+}>;
+
+type UserWithRolePermissionLinks = Prisma.UserGetPayload<{
+  include: {
+    userRoles: {
+      include: {
+        role: {
+          include: {
+            rolePermissions: {
+              include: { permission: true };
+            };
+          };
+        };
+      };
+    };
+  };
+}>;
 
 @Injectable()
 export class UserService {
@@ -20,19 +42,38 @@ export class UserService {
 
   async findOneByUsername(
     username: string,
-  ): Promise<
-    (User & { roles: (Role & { permissions: Permission[] })[] }) | null
-  > {
-    return this.prisma.user.findUnique({
+  ): Promise<UserWithRolesAndPermissions | null> {
+    const user = await this.prisma.user.findUnique({
       where: { username },
       include: {
-        roles: {
+        userRoles: {
           include: {
-            permissions: true, // Include permissions nested within roles
+            role: {
+              include: {
+                rolePermissions: {
+                  include: { permission: true },
+                },
+              },
+            },
           },
         },
       },
     });
+    if (!user) {
+      return null;
+    }
+    const mapped = this.mapRolesWithPermissions(user);
+    const hasAdminRole = mapped.roles.some((role) => role.name === 'admin');
+    if (!hasAdminRole) {
+      return mapped;
+    }
+    const allPermissions = await this.prisma.permission.findMany();
+    return {
+      ...mapped,
+      roles: mapped.roles.map((role) =>
+        role.name === 'admin' ? { ...role, permissions: allPermissions } : role,
+      ),
+    };
   }
 
   async findOneById(id: number): Promise<User | null> {
@@ -56,6 +97,28 @@ export class UserService {
     });
   }
 
+  private mapRoles(user: UserWithRoleLinks): UserWithRoles {
+    const { userRoles, ...rest } = user;
+    return {
+      ...rest,
+      roles: userRoles.map((link) => link.role),
+    };
+  }
+
+  private mapRolesWithPermissions(
+    user: UserWithRolePermissionLinks,
+  ): UserWithRolesAndPermissions {
+    const { userRoles, ...rest } = user;
+    const roles = userRoles.map((link) => {
+      const { rolePermissions, ...role } = link.role;
+      return {
+        ...role,
+        permissions: rolePermissions.map((item) => item.permission),
+      };
+    });
+    return { ...rest, roles };
+  }
+
   private sanitizeUser(user: UserWithRoles): SafeUser {
     const { password: _password, otpSecret: _otpSecret, ...safeUser } = user;
     void _password;
@@ -65,9 +128,9 @@ export class UserService {
 
   async findAllAccounts(): Promise<SafeUser[]> {
     const users = await this.prisma.user.findMany({
-      include: { roles: true },
+      include: { userRoles: { include: { role: true } } },
     });
-    return users.map((user) => this.sanitizeUser(user));
+    return users.map((user) => this.sanitizeUser(this.mapRoles(user)));
   }
 
   async findAccountsPage(query: QueryUserDto): Promise<PageResult<SafeUser>> {
@@ -78,28 +141,28 @@ export class UserService {
       where.username = { contains: query.username, mode: 'insensitive' };
     }
     if (query.roleIds) {
-      where.roles = { some: { id: { in: query.roleIds } } };
+      where.userRoles = { some: { roleId: { in: query.roleIds } } };
     }
     const users = await this.prisma.user.findMany({
       where,
-      include: { roles: true },
+      include: { userRoles: { include: { role: true } } },
       orderBy: { id: 'desc' },
       skip,
       take,
     });
-    const list = users.map((user) => this.sanitizeUser(user));
+    const list = users.map((user) => this.sanitizeUser(this.mapRoles(user)));
     return createPageResult(list, total, query);
   }
 
   async findAccountById(id: number): Promise<SafeUser> {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { roles: true },
+      include: { userRoles: { include: { role: true } } },
     });
     if (!user) {
       throw new NotFoundException(`User with ID #${id} not found`);
     }
-    return this.sanitizeUser(user);
+    return this.sanitizeUser(this.mapRoles(user));
   }
 
   async createAccount(createUserDto: CreateUserDto): Promise<SafeUser> {
@@ -109,15 +172,17 @@ export class UserService {
       data: {
         username,
         password: hashedPassword,
-        roles: roleIds?.length
+        userRoles: roleIds?.length
           ? {
-              connect: roleIds.map((id) => ({ id })),
+              create: roleIds.map((roleId) => ({
+                role: { connect: { id: roleId } },
+              })),
             }
           : undefined,
       },
-      include: { roles: true },
+      include: { userRoles: { include: { role: true } } },
     });
-    return this.sanitizeUser(user);
+    return this.sanitizeUser(this.mapRoles(user));
   }
 
   async updateAccount(
@@ -136,8 +201,15 @@ export class UserService {
     }
 
     if (roleIds) {
-      data.roles = {
-        set: roleIds.map((roleId) => ({ id: roleId })),
+      data.userRoles = {
+        deleteMany: {},
+        ...(roleIds.length
+          ? {
+              create: roleIds.map((roleId) => ({
+                role: { connect: { id: roleId } },
+              })),
+            }
+          : {}),
       };
     }
 
@@ -145,9 +217,9 @@ export class UserService {
       const user = await this.prisma.user.update({
         where: { id },
         data,
-        include: { roles: true },
+        include: { userRoles: { include: { role: true } } },
       });
-      return this.sanitizeUser(user);
+      return this.sanitizeUser(this.mapRoles(user));
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

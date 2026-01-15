@@ -30,6 +30,10 @@ export class PermissionsGuard implements CanActivate {
       return false; // No user or user has no roles
     }
 
+    if (user.roles.some((role) => role.name === 'admin')) {
+      return true;
+    }
+
     // Check if the user has any role that grants the required permission
     const hasPermission = user.roles.some((role) =>
       role.permissions.some(

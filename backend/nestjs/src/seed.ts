@@ -155,20 +155,20 @@ async function main() {
   const adminRole = await prisma.role.create({
     data: {
       name: 'admin',
-      permissions: {
-        connect: [
-          { id: accountPage.id },
-          { id: accountCreate.id },
-          { id: accountUpdate.id },
-          { id: accountDelete.id },
-          { id: rolePage.id },
-          { id: roleCreate.id },
-          { id: roleUpdate.id },
-          { id: roleDelete.id },
-          { id: permissionPage.id },
-          { id: permissionCreate.id },
-          { id: permissionUpdate.id },
-          { id: permissionDelete.id },
+      rolePermissions: {
+        create: [
+          { permission: { connect: { id: accountPage.id } } },
+          { permission: { connect: { id: accountCreate.id } } },
+          { permission: { connect: { id: accountUpdate.id } } },
+          { permission: { connect: { id: accountDelete.id } } },
+          { permission: { connect: { id: rolePage.id } } },
+          { permission: { connect: { id: roleCreate.id } } },
+          { permission: { connect: { id: roleUpdate.id } } },
+          { permission: { connect: { id: roleDelete.id } } },
+          { permission: { connect: { id: permissionPage.id } } },
+          { permission: { connect: { id: permissionCreate.id } } },
+          { permission: { connect: { id: permissionUpdate.id } } },
+          { permission: { connect: { id: permissionDelete.id } } },
         ],
       },
     },
@@ -177,8 +177,8 @@ async function main() {
   const userRole = await prisma.role.create({
     data: {
       name: 'user',
-      permissions: {
-        connect: [{ id: accountPage.id }],
+      rolePermissions: {
+        create: [{ permission: { connect: { id: accountPage.id } } }],
       },
     },
   });
@@ -191,8 +191,8 @@ async function main() {
     data: {
       username: 'admin',
       password: adminPassword,
-      roles: {
-        connect: { id: adminRole.id },
+      userRoles: {
+        create: [{ role: { connect: { id: adminRole.id } } }],
       },
     },
   });
@@ -202,8 +202,8 @@ async function main() {
     data: {
       username: 'john.doe',
       password: userPassword,
-      roles: {
-        connect: { id: userRole.id },
+      userRoles: {
+        create: [{ role: { connect: { id: userRole.id } } }],
       },
     },
   });

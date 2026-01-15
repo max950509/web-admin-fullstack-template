@@ -90,6 +90,7 @@ export default function AccountPage() {
 
 	// SchemaForm 基础列：从 baseColumns 派生（可作数据处理，这里暂无需要）
 	const baseFormCols = useMemo(() => {
+		console.log("baseFormCols", baseColumns);
 		return baseColumns as ProFormColumnsType<AccountFormParams>[];
 	}, [baseColumns]);
 
@@ -182,7 +183,7 @@ export default function AccountPage() {
 						actionRef.current?.reload();
 						return true;
 					}}
-					{...COMMON_MODAL_PROPS}
+					modalProps={COMMON_MODAL_PROPS}
 				/>,
 			]}
 			requestApi={$getAccounts}
