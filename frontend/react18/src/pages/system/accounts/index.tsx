@@ -1,10 +1,14 @@
-import type { ActionType, ProColumns } from "@ant-design/pro-components";
+import type {
+	ActionType,
+	ProColumns,
+	ProDescriptionsItemProps,
+} from "@ant-design/pro-components";
 import {
 	BetaSchemaForm,
 	type ProFormColumnsType,
 } from "@ant-design/pro-components";
-import { Button, message, Popconfirm, Space } from "antd";
-import { useMemo, useRef } from "react";
+import { Button, message, Popconfirm, Space, Tag } from "antd";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BaseProTable from "@/components/BaseProTable.tsx";
 import DescModal from "@/components/DescModal.tsx";
 import {
@@ -15,17 +19,26 @@ import {
 	type AccountFormParams,
 	type AccountRow,
 } from "@/services/account";
+import { $getRolesOptions } from "@/services/role";
 import { patchSchema } from "@/utils/common.ts";
 import { COMMON_MODAL_PROPS } from "@/utils/constants.ts";
 
-// 替换为你的真实角色列表
-const ROLE_OPTIONS: { label: string; value: number }[] = [
-	// { label: "管理员", value: 1 },
-	// { label: "运营", value: 2 },
-];
-
 export default function AccountPage() {
 	const actionRef = useRef<ActionType | null>(null);
+	const [roleOptions, setRoleOptions] = useState<
+		{ label: string; value: number }[]
+	>([]);
+
+	useEffect(() => {
+		$getRolesOptions().then((res) => {
+			setRoleOptions(
+				res.data.map((item: { name: string; id: number }) => ({
+					label: item.name,
+					value: item.id,
+				})),
+			);
+		});
+	}, []);
 
 	// CRUD baseColumns
 	const baseColumns = useMemo<ProColumns<AccountRow>[]>(() => {
@@ -62,13 +75,18 @@ export default function AccountPage() {
 				valueType: "select",
 				fieldProps: {
 					mode: "multiple",
-					options: ROLE_OPTIONS,
 					placeholder: "请选择角色",
+					options: roleOptions,
 				},
 				formItemProps: { rules: [{ required: true, message: "请选择角色" }] },
+				render: (_, record) => {
+					return record.roles.map((role) => (
+						<Tag key={role.id}>{role.name}</Tag>
+					));
+				},
 			},
 		];
-	}, []);
+	}, [roleOptions]);
 
 	// SchemaForm 基础列：从 baseColumns 派生（可作数据处理，这里暂无需要）
 	const baseFormCols = useMemo(() => {
@@ -97,11 +115,12 @@ export default function AccountPage() {
 		[baseFormCols],
 	);
 
-	// 详情：极简（不做 map），直接 filter + cast
 	const descColumns = useMemo(() => {
-		return baseColumns
-			.filter((c) => c.dataIndex !== "password")
-			.filter((c) => !c.hideInTable) as any;
+		return patchSchema(baseFormCols, {
+			id: { render: (_) => _ },
+			// 编辑不需要密码
+			password: { hideInDescriptions: true },
+		}) as ProDescriptionsItemProps<AccountRow>[];
 	}, [baseColumns]);
 
 	// Table 列：直接复用 baseColumns，再 append 操作列
@@ -118,19 +137,22 @@ export default function AccountPage() {
 						title="编辑账号"
 						trigger={<a>编辑</a>}
 						columns={updateFormCols}
-						initialValues={record}
+						initialValues={{
+							...record,
+							roleIds: record.roles.map((r) => r.id),
+						}}
 						onFinish={async (values) => {
 							await $updateAccount(record.id, values);
 							message.success("更新成功");
 							actionRef.current?.reload();
 							return true;
 						}}
-						{...COMMON_MODAL_PROPS}
+						modalProps={COMMON_MODAL_PROPS}
 					/>
 					<Popconfirm
 						title="确认删除吗"
 						onConfirm={async () => {
-							await $deleteAccount(record.id as any);
+							await $deleteAccount(record.id);
 							message.success("删除成功");
 							actionRef.current?.reload();
 						}}
@@ -155,7 +177,7 @@ export default function AccountPage() {
 					trigger={<Button type="primary">新建</Button>}
 					columns={createFormCols}
 					onFinish={async (values) => {
-						await $createAccount(values as AccountFormParams);
+						await $createAccount(values);
 						message.success("创建成功");
 						actionRef.current?.reload();
 						return true;

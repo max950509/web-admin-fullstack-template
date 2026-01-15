@@ -10,50 +10,58 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
-import { PermissionsGuard } from '../../core/guards/permissions.guard'; // New guard
-import { CheckPermissions } from '../../core/decorators/check-permissions.decorator'; // New decorator
+import { PermissionsGuard } from '../../core/guards/permissions.guard';
+import { CheckPermissions } from '../../core/decorators/check-permissions.decorator';
+import { QueryRoleDto } from './dto/query-role.dto';
 
 @Controller('roles')
-@UseGuards(TokenAuthGuard, PermissionsGuard) // Use new PermissionsGuard
+@UseGuards(TokenAuthGuard, PermissionsGuard)
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
   @Post()
-  @CheckPermissions('create', 'role') // Example: require 'create:role'
+  @CheckPermissions('create', 'role')
   create(@Body() createRoleDto: CreateRoleDto) {
-    return this.roleService.create(createRoleDto);
+    return this.roleService.createRole(createRoleDto);
   }
 
   @Get()
-  @CheckPermissions('read', 'role') // Example: require 'read:role'
-  findAll() {
-    return this.roleService.findAll();
+  @CheckPermissions('read', 'role')
+  findAll(@Query() queryRoleDto: QueryRoleDto) {
+    return this.roleService.findRolesPage(queryRoleDto);
+  }
+
+  @Get('options')
+  @CheckPermissions('read', 'role')
+  findOptions() {
+    return this.roleService.findRolesOptions();
   }
 
   @Get(':id')
-  @CheckPermissions('read', 'role') // Example: require 'read:role'
+  @CheckPermissions('read', 'role')
   findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.roleService.findOne(id);
+    return this.roleService.findRoleById(id);
   }
 
   @Patch(':id')
-  @CheckPermissions('update', 'role') // Example: require 'update:role'
+  @CheckPermissions('update', 'role')
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRoleDto: UpdateRoleDto,
   ) {
-    return this.roleService.update(id, updateRoleDto);
+    return this.roleService.updateRole(id, updateRoleDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @CheckPermissions('delete', 'role') // Example: require 'delete:role'
+  @CheckPermissions('delete', 'role')
   remove(@Param('id', ParseIntPipe) id: number) {
-    return this.roleService.remove(id);
+    return this.roleService.removeRole(id);
   }
 }

@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 import { Navigate, Outlet } from "react-router-dom";
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/system/accounts";
+import Roles from "@/pages/system/roles";
 
 // 定义你的 handle 类型
 export interface AppRouteHandle {
@@ -42,11 +43,11 @@ export const allRoutes: AppRouteObject[] = [
 				},
 			},
 			{
-				path: "accounts/new",
-				element: <Accounts />,
+				path: "roles",
+				element: <Roles />,
 				handle: {
-					title: "新增账号",
-					code: "create:account",
+					title: "角色管理",
+					code: "read:role",
 				},
 			},
 		],

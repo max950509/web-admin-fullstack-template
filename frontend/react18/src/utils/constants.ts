@@ -1,5 +1,5 @@
 export const COMMON_MODAL_PROPS = {
-	destroyOnClose: true,
+	destroyOnHidden: true,
 	maskClosable: false,
 	width: "70%",
 };
