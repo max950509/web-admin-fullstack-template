@@ -9,6 +9,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import KeyvRedis from '@keyv/redis';
 import Keyv from 'keyv';
 import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
+import { PermissionsGuard } from '../../core/guards/permissions.guard';
 
 @Module({
   imports: [
@@ -53,8 +54,8 @@ import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
       },
     }),
   ],
-  providers: [AuthService, LocalStrategy, TokenAuthGuard],
+  providers: [AuthService, LocalStrategy, TokenAuthGuard, PermissionsGuard],
   controllers: [AuthController],
-  exports: [TokenAuthGuard, CacheModule, UserModule],
+  exports: [TokenAuthGuard, PermissionsGuard, CacheModule, UserModule],
 })
 export class AuthModule {}

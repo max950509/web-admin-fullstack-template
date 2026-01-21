@@ -16,7 +16,6 @@ import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { OtpDto } from './dto/otp.dto';
 import { type User } from '@prisma/client';
 import type { Request as ExpressRequest } from 'express';
-import type { UserWithRoles } from './auth.service';
 
 type RequestWithUser<TUser> = ExpressRequest & { user: TUser };
 
@@ -40,7 +39,7 @@ export class AuthController {
   @UseGuards(CaptchaGuard, AuthGuard('local'))
   @Post('login')
   async login(
-    @Request() req: RequestWithUser<UserWithRoles>,
+    @Request() req: RequestWithUser<User>,
     @Body() loginDto: LoginDto,
   ) {
     void loginDto;
@@ -70,10 +69,6 @@ export class AuthController {
   @UseGuards(TokenAuthGuard)
   @Get('profile')
   getProfile(@ReqUser() user: User) {
-    // TokenAuthGuard populates req.user from Redis-backed sessions.
-    const { password: _password, otpSecret: _otpSecret, ...remaining } = user;
-    void _password;
-    void _otpSecret;
-    return remaining;
+    return this.authService.getProfile(user.id);
   }
 }

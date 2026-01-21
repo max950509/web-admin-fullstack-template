@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsInt,
   IsOptional,
   IsString,
@@ -15,6 +16,14 @@ export class UpdateUserDto {
   @IsOptional()
   @MinLength(6)
   password?: string;
+
+  @IsString()
+  @IsOptional()
+  otpSecret?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isOtpEnabled?: boolean;
 
   @IsArray()
   @IsInt({ each: true })

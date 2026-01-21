@@ -15,9 +15,16 @@ import { toDataURL } from 'qrcode';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, randomUUID } from 'crypto';
 
-export type UserWithRoles = Omit<User, 'password'> & {
-  roles: (Role & { permissions: Permission[] })[];
-}; // User without password, but with roles and their permissions
+type PermissionView = Pick<
+  Permission,
+  'name' | 'type' | 'action' | 'resource' | 'parentId' | 'sort'
+>;
+type RoleWithPermissions = Pick<Role, 'name'> & {
+  permissions: PermissionView[];
+};
+export type UserWithRoles = Pick<User, 'id' | 'username' | 'isOtpEnabled'> & {
+  roles: RoleWithPermissions[];
+};
 
 type TokenScope = 'access' | '2fa';
 
@@ -99,15 +106,10 @@ export class AuthService {
    * @param pass The password to validate.
    * @returns The user object if validation is successful, otherwise null.
    */
-  async validateUser(
-    username: string,
-    pass: string,
-  ): Promise<UserWithRoles | null> {
+  async validateUser(username: string, pass: string): Promise<User | null> {
     const user = await this.userService.findOneByUsername(username);
     if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password: _password, ...result } = user;
-      void _password;
-      return result;
+      return user;
     }
     return null;
   }
@@ -158,7 +160,7 @@ export class AuthService {
    * @param user The authenticated user object.
    * @returns A response object indicating the next step (OTP required or full login success).
    */
-  async login(user: UserWithRoles) {
+  async login(user: User) {
     if (user.isOtpEnabled) {
       // Issue a temporary token that only grants access to the 2FA flow.
       const temporaryToken = await this.issueToken(
@@ -195,9 +197,15 @@ export class AuthService {
     if (!found) {
       throw new UnauthorizedException('User not found after 2FA validation');
     }
-    const { password: _password, ...safeUser } = found;
-    void _password;
-    return this.issueAccessToken(safeUser);
+    return this.issueAccessToken(found);
+  }
+
+  async getProfile(id: number): Promise<UserWithRoles> {
+    const found = await this.userService.findOneByIdWithPermissions(id);
+    if (!found) {
+      throw new UnauthorizedException('User not found');
+    }
+    return found;
   }
 
   /**
@@ -218,7 +226,7 @@ export class AuthService {
       secret,
     );
 
-    await this.userService.updateUser(userId, { otpSecret: secret });
+    await this.userService.update(userId, { otpSecret: secret });
 
     const qrCodeDataUrl = await toDataURL(otpAuthUrl);
 
@@ -248,16 +256,14 @@ export class AuthService {
       throw new BadRequestException('Invalid OTP code. Please try again.');
     }
 
-    await this.userService.updateUser(userId, { isOtpEnabled: true });
+    await this.userService.update(userId, { isOtpEnabled: true });
     const found = await this.userService.findOneByUsername(user.username);
     if (!found) {
       throw new UnauthorizedException(
         'User not found after OTP enable validation',
       );
     }
-    const { password: _password, ...safeUser } = found;
-    void _password;
-    return this.issueAccessToken(safeUser);
+    return this.issueAccessToken(found);
   }
 
   /**
@@ -278,7 +284,7 @@ export class AuthService {
    * @param user The user object.
    * @returns An object containing the access token.
    */
-  private async issueAccessToken(user: UserWithRoles) {
+  private async issueAccessToken(user: User) {
     const accessToken = await this.issueToken(
       { id: user.id, username: user.username },
       'access',

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { User, Role, Prisma, Permission } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -11,40 +11,44 @@ import {
 import type { PageResult } from '../../core/types/page-result';
 import { QueryUserDto } from './dto/query-user.dto';
 
+type SafeUser = Pick<User, 'id' | 'username' | 'isOtpEnabled'>;
 type UserWithRoles = User & { roles: Role[] };
-type RoleWithPermissions = Role & { permissions: Permission[] };
-type UserWithRolesAndPermissions = User & { roles: RoleWithPermissions[] };
-type SafeUser = Omit<User, 'password' | 'otpSecret'> & { roles: Role[] };
+type RoleWithPermissions = Role & {
+  permissions: Permission[];
+};
+type UserWithRolesAndPermissions = SafeUser & { roles: RoleWithPermissions[] };
 
 type UserWithRoleLinks = Prisma.UserGetPayload<{
   include: { userRoles: { include: { role: true } } };
-}>;
-
-type UserWithRolePermissionLinks = Prisma.UserGetPayload<{
-  include: {
-    userRoles: {
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: { permission: true };
-            };
-          };
-        };
-      };
-    };
-  };
 }>;
 
 @Injectable()
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findOneByUsername(
-    username: string,
+  private mapRoles(user: UserWithRoleLinks): UserWithRoles {
+    const { userRoles, ...rest } = user;
+    return {
+      ...rest,
+      roles: userRoles.map((link) => link.role),
+    };
+  }
+
+  private sanitizeUser(user: User): SafeUser {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, otpSecret, ...safeUser } = user;
+    return safeUser;
+  }
+
+  /**
+   * Find a user by ID and return with roles and permissions
+   * @param userId
+   */
+  async findOneByIdWithPermissions(
+    userId: number,
   ): Promise<UserWithRolesAndPermissions | null> {
     const user = await this.prisma.user.findUnique({
-      where: { username },
+      where: { id: userId },
       include: {
         userRoles: {
           include: {
@@ -62,15 +66,25 @@ export class UserService {
     if (!user) {
       return null;
     }
-    const mapped = this.mapRolesWithPermissions(user);
-    const hasAdminRole = mapped.roles.some((role) => role.name === 'admin');
+    const { id, username, isOtpEnabled, userRoles } = user;
+    // Map roles with permissions for a user
+    const roles = userRoles.map((link) => {
+      const { rolePermissions, ...role } = link.role;
+      return {
+        ...role,
+        permissions: rolePermissions.map((item) => item.permission),
+      };
+    });
+    const hasAdminRole = roles.some((role) => role.name === 'admin');
     if (!hasAdminRole) {
-      return mapped;
+      return { id, username, isOtpEnabled, roles };
     }
     const allPermissions = await this.prisma.permission.findMany();
     return {
-      ...mapped,
-      roles: mapped.roles.map((role) =>
+      id,
+      username,
+      isOtpEnabled,
+      roles: roles.map((role) =>
         role.name === 'admin' ? { ...role, permissions: allPermissions } : role,
       ),
     };
@@ -80,62 +94,12 @@ export class UserService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async createUser(data: Prisma.UserCreateInput): Promise<User> {
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    return this.prisma.user.create({
-      data: {
-        ...data,
-        password: hashedPassword,
-      },
-    });
+  async findOneByUsername(username: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { username } });
   }
 
-  async updateUser(id: number, data: Prisma.UserUpdateInput): Promise<User> {
-    return this.prisma.user.update({
-      where: { id },
-      data,
-    });
-  }
-
-  private mapRoles(user: UserWithRoleLinks): UserWithRoles {
-    const { userRoles, ...rest } = user;
-    return {
-      ...rest,
-      roles: userRoles.map((link) => link.role),
-    };
-  }
-
-  private mapRolesWithPermissions(
-    user: UserWithRolePermissionLinks,
-  ): UserWithRolesAndPermissions {
-    const { userRoles, ...rest } = user;
-    const roles = userRoles.map((link) => {
-      const { rolePermissions, ...role } = link.role;
-      return {
-        ...role,
-        permissions: rolePermissions.map((item) => item.permission),
-      };
-    });
-    return { ...rest, roles };
-  }
-
-  private sanitizeUser(user: UserWithRoles): SafeUser {
-    const { password: _password, otpSecret: _otpSecret, ...safeUser } = user;
-    void _password;
-    void _otpSecret;
-    return safeUser;
-  }
-
-  async findAllAccounts(): Promise<SafeUser[]> {
-    const users = await this.prisma.user.findMany({
-      include: { userRoles: { include: { role: true } } },
-    });
-    return users.map((user) => this.sanitizeUser(this.mapRoles(user)));
-  }
-
-  async findAccountsPage(query: QueryUserDto): Promise<PageResult<SafeUser>> {
+  async findAll(query: QueryUserDto): Promise<PageResult<SafeUser>> {
     const { skip, take } = getPaginationArgs(query);
-    const total = await this.prisma.user.count();
     const where: Prisma.UserWhereInput = {};
     if (query.username) {
       where.username = { contains: query.username, mode: 'insensitive' };
@@ -143,6 +107,7 @@ export class UserService {
     if (query.roleIds) {
       where.userRoles = { some: { roleId: { in: query.roleIds } } };
     }
+    const total = await this.prisma.user.count({ where });
     const users = await this.prisma.user.findMany({
       where,
       include: { userRoles: { include: { role: true } } },
@@ -154,18 +119,18 @@ export class UserService {
     return createPageResult(list, total, query);
   }
 
-  async findAccountById(id: number): Promise<SafeUser> {
+  async findUserByIdWithRole(id: number): Promise<SafeUser> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       include: { userRoles: { include: { role: true } } },
     });
     if (!user) {
-      throw new NotFoundException(`User with ID #${id} not found`);
+      throw new Error(`User with ID #${id} not found`);
     }
     return this.sanitizeUser(this.mapRoles(user));
   }
 
-  async createAccount(createUserDto: CreateUserDto): Promise<SafeUser> {
+  async create(createUserDto: CreateUserDto): Promise<SafeUser> {
     const { username, password, roleIds } = createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await this.prisma.user.create({
@@ -185,16 +150,9 @@ export class UserService {
     return this.sanitizeUser(this.mapRoles(user));
   }
 
-  async updateAccount(
-    id: number,
-    updateUserDto: UpdateUserDto,
-  ): Promise<SafeUser> {
-    const { username, password, roleIds } = updateUserDto;
-    const data: Prisma.UserUpdateInput = {};
-
-    if (username) {
-      data.username = username;
-    }
+  async update(id: number, updateUserDto: UpdateUserDto): Promise<SafeUser> {
+    const { roleIds, password, ...reset } = updateUserDto;
+    const data: Prisma.UserUpdateInput = reset;
 
     if (password) {
       data.password = await bcrypt.hash(password, 10);
@@ -213,26 +171,16 @@ export class UserService {
       };
     }
 
-    try {
-      const user = await this.prisma.user.update({
-        where: { id },
-        data,
-        include: { userRoles: { include: { role: true } } },
-      });
-      return this.sanitizeUser(this.mapRoles(user));
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new NotFoundException(`User with ID #${id} not found`);
-      }
-      throw error;
-    }
+    const user = await this.prisma.user.update({
+      where: { id },
+      data,
+      include: { userRoles: { include: { role: true } } },
+    });
+    return this.sanitizeUser(this.mapRoles(user));
   }
 
-  async removeAccount(id: number): Promise<void> {
-    await this.findAccountById(id);
+  async remove(id: number): Promise<void> {
+    await this.findOneById(id);
     await this.prisma.user.delete({ where: { id } });
   }
 }

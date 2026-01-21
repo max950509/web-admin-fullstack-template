@@ -1,6 +1,7 @@
 import { message } from "antd";
 import axios from "axios";
-import { emitter, KEY_AUTH_EXPIRED } from "@/utils/mitt";
+import qs from "qs";
+import { emitter, KEY_AUTH_EXPIRED } from "@/utils/mitt.ts";
 import { clearToken, getToken } from "./auth";
 
 const HOST = import.meta.env.VITE_APP_API_BASE;
@@ -11,6 +12,10 @@ let globalAbortController: AbortController | undefined;
 const request = axios.create({
 	baseURL: HOST,
 	timeout: 3 * 1000,
+	paramsSerializer: (params) =>
+		qs.stringify(params, {
+			arrayFormat: "repeat", // roleIds=5&roleIds=6
+		}),
 });
 
 request.interceptors.request.use(

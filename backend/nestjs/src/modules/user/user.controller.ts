@@ -28,19 +28,19 @@ export class UserController {
   @Post()
   @CheckPermissions('create', 'account')
   create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.createAccount(createUserDto);
+    return this.userService.create(createUserDto);
   }
 
   @Get()
   @CheckPermissions('read', 'account')
   findAll(@Query() queryUserDto: QueryUserDto) {
-    return this.userService.findAccountsPage(queryUserDto);
+    return this.userService.findAll(queryUserDto);
   }
 
   @Get(':id')
   @CheckPermissions('read', 'account')
   findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.userService.findAccountById(id);
+    return this.userService.findUserByIdWithRole(id);
   }
 
   @Patch(':id')
@@ -49,13 +49,13 @@ export class UserController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    return this.userService.updateAccount(id, updateUserDto);
+    return this.userService.update(id, updateUserDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @CheckPermissions('delete', 'account')
   remove(@Param('id', ParseIntPipe) id: number) {
-    return this.userService.removeAccount(id);
+    return this.userService.remove(id);
   }
 }

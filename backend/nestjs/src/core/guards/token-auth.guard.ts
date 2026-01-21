@@ -15,11 +15,15 @@ type TokenScope = 'access' | '2fa';
 type StoredToken = {
   userId: number;
   username: string;
-  scope: TokenScope;
-  ver: number; // Per-user session version to invalidate all tokens at once.
-  issuedAt: number;
+  scope: TokenScope; // Controls which endpoints the token is allowed to access.
+  ver: number; // Per-user session version to revoke all tokens at once.
+  issuedAt: number; // Epoch ms for token issue time (audit/debug).
 };
 
+/**
+ * token 是否有效
+ * @param value
+ */
 function isStoredToken(value: unknown): value is StoredToken {
   if (!value || typeof value !== 'object') return false;
   const record = value as Record<string, unknown>;
@@ -40,10 +44,12 @@ export class TokenAuthGuard implements CanActivate {
   ) {}
 
   private getTokenKey(token: string): string {
+    // Cache key for a specific issued token.
     return `auth:token:${token}`;
   }
 
   private getUserVersionKey(userId: number): string {
+    // Cache key for the user's session version.
     return `auth:user:${userId}:ver`;
   }
 
@@ -68,14 +74,13 @@ export class TokenAuthGuard implements CanActivate {
     const currentVer = await this.cacheManager.get<unknown>(
       this.getUserVersionKey(stored.userId),
     );
+    // Validate session version to ensure the user has not been logged out.
     if (typeof currentVer !== 'number' || currentVer !== stored.ver) {
       throw new UnauthorizedException('Token has been revoked');
     }
 
-    const user =
-      stored.scope === '2fa'
-        ? await this.userService.findOneById(stored.userId)
-        : await this.userService.findOneByUsername(stored.username);
+    // Only load the base user; permissions are checked in a separate guard.
+    const user = await this.userService.findOneById(stored.userId);
 
     if (!user) {
       throw new UnauthorizedException('User not found');

@@ -1,18 +1,17 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { CHECK_PERMISSIONS_KEY } from '../decorators/check-permissions.decorator';
-import { User, Role, Permission } from '@prisma/client'; // Correct import path
-
-// Define a type for User that includes roles and their permissions
-type UserWithRolesAndPermissions = User & {
-  roles: (Role & { permissions: Permission[] })[];
-};
+import { PrismaService } from '../../prisma/prisma.service';
+import type { User } from '@prisma/client';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    private reflector: Reflector,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermission = this.reflector.getAllAndOverride<{
       action: string;
       resource: string;
@@ -22,27 +21,32 @@ export class PermissionsGuard implements CanActivate {
       return true; // No specific permission required, access granted
     }
 
-    const { user }: { user: UserWithRolesAndPermissions } = context
-      .switchToHttp()
-      .getRequest();
-
-    if (!user || !user.roles) {
-      return false; // No user or user has no roles
+    const { user }: { user?: User } = context.switchToHttp().getRequest();
+    if (!user) {
+      return false; // No user attached to request.
     }
 
-    if (user.roles.some((role) => role.name === 'admin')) {
-      return true;
-    }
+    // Check if the user has the required permission or is an admin
+    const matchedRole = await this.prisma.role.findFirst({
+      where: {
+        userRoles: { some: { userId: user.id } },
+        OR: [
+          { name: 'admin' },
+          {
+            rolePermissions: {
+              some: {
+                permission: {
+                  action: requiredPermission.action,
+                  resource: requiredPermission.resource,
+                },
+              },
+            },
+          },
+        ],
+      },
+      select: { id: true },
+    });
 
-    // Check if the user has any role that grants the required permission
-    const hasPermission = user.roles.some((role) =>
-      role.permissions.some(
-        (permission) =>
-          permission.action === requiredPermission.action &&
-          permission.resource === requiredPermission.resource,
-      ),
-    );
-
-    return hasPermission;
+    return Boolean(matchedRole);
   }
 }
