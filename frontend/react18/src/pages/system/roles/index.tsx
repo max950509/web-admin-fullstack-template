@@ -237,13 +237,9 @@ export default function RolePage() {
 						}}
 						modalProps={COMMON_MODAL_PROPS}
 					/>
-					{/*@ts-ignore*/}
-					<a
-						disabled={record.name === "admin"}
-						onClick={() => openPermissionModal(record)}
-					>
-						权限
-					</a>
+					{record.name === "admin" ? (
+						<a onClick={() => openPermissionModal(record)}>权限</a>
+					) : null}
 					<Popconfirm
 						title="确认删除吗"
 						onConfirm={async () => {
