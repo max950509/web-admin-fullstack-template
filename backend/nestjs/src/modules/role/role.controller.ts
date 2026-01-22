@@ -28,18 +28,18 @@ export class RoleController {
   @Post()
   @CheckPermissions('create', 'role')
   create(@Body() createRoleDto: CreateRoleDto) {
-    return this.roleService.createRole(createRoleDto);
+    return this.roleService.create(createRoleDto);
   }
 
   @Get()
   @CheckPermissions('read', 'role')
   findAll(@Query() queryRoleDto: QueryRoleDto) {
-    return this.roleService.findRolesPage(queryRoleDto);
+    return this.roleService.findAll(queryRoleDto);
   }
 
   @Get('options')
   findOptions() {
-    return this.roleService.findRolesOptions();
+    return this.roleService.findAllForOptions();
   }
 
   @Get(':id')
@@ -54,13 +54,13 @@ export class RoleController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRoleDto: UpdateRoleDto,
   ) {
-    return this.roleService.updateRole(id, updateRoleDto);
+    return this.roleService.update(id, updateRoleDto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @CheckPermissions('delete', 'role')
   remove(@Param('id', ParseIntPipe) id: number) {
-    return this.roleService.removeRole(id);
+    return this.roleService.remove(id);
   }
 }

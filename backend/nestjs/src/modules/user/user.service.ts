@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { User, Role, Prisma, Permission } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -133,21 +133,31 @@ export class UserService {
   async create(createUserDto: CreateUserDto): Promise<SafeUser> {
     const { username, password, roleIds } = createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await this.prisma.user.create({
-      data: {
-        username,
-        password: hashedPassword,
-        userRoles: roleIds?.length
-          ? {
-              create: roleIds.map((roleId) => ({
-                role: { connect: { id: roleId } },
-              })),
-            }
-          : undefined,
-      },
-      include: { userRoles: { include: { role: true } } },
-    });
-    return this.sanitizeUser(this.mapRoles(user));
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          username,
+          password: hashedPassword,
+          userRoles: roleIds?.length
+            ? {
+                create: roleIds.map((roleId) => ({
+                  role: { connect: { id: roleId } },
+                })),
+              }
+            : undefined,
+        },
+        include: { userRoles: { include: { role: true } } },
+      });
+      return this.sanitizeUser(this.mapRoles(user));
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException(`用户名已存在`);
+      }
+      throw new BadRequestException('用户创建失败');
+    }
   }
 
   async update(id: number, updateUserDto: UpdateUserDto): Promise<SafeUser> {

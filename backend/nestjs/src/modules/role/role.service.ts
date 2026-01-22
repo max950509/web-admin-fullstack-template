@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Role, Prisma, Permission } from '@prisma/client';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -22,7 +22,7 @@ type RoleWithPermissionLinks = Prisma.RoleGetPayload<{
 export class RoleService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createRole(
+  async create(
     createRoleDto: CreateRoleDto,
   ): Promise<Role & { permissions: Permission[] }> {
     const { name, permissionIds } = createRoleDto;
@@ -46,7 +46,7 @@ export class RoleService {
     return this.mapPermissions(role);
   }
 
-  async findRolesPage(query: QueryRoleDto): Promise<PageResult<Role>> {
+  async findAll(query: QueryRoleDto): Promise<PageResult<Role>> {
     const { skip, take } = getPaginationArgs(query);
     const where: Prisma.RoleWhereInput = {};
     if (query.name) {
@@ -70,21 +70,17 @@ export class RoleService {
       include: rolePermissionInclude,
     });
     if (!role) {
-      throw new NotFoundException(`Role with ID #${id} not found`);
+      throw new BadRequestException(`Role with ID #${id} not found`);
     }
     return this.mapPermissions(role);
   }
 
-  async updateRole(
+  async update(
     id: number,
     updateRoleDto: UpdateRoleDto,
   ): Promise<Role & { permissions: Permission[] }> {
-    const { name, permissionIds } = updateRoleDto;
-    const data: Prisma.RoleUpdateInput = {};
-
-    if (name) {
-      data.name = name;
-    }
+    const { permissionIds, ...reset } = updateRoleDto;
+    const data: Prisma.RoleUpdateInput = reset;
 
     if (permissionIds) {
       data.rolePermissions = {
@@ -100,31 +96,20 @@ export class RoleService {
           : {}),
       };
     }
-
-    try {
-      const role = await this.prisma.role.update({
-        where: { id },
-        data,
-        include: rolePermissionInclude,
-      });
-      return this.mapPermissions(role);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2025'
-      ) {
-        throw new NotFoundException(`Role with ID #${id} not found`);
-      }
-      throw error;
-    }
+    const role = await this.prisma.role.update({
+      where: { id },
+      data,
+      include: rolePermissionInclude,
+    });
+    return this.mapPermissions(role);
   }
 
-  async removeRole(id: number): Promise<void> {
+  async remove(id: number): Promise<void> {
     await this.findRoleById(id);
     await this.prisma.role.delete({ where: { id } });
   }
 
-  async findRolesOptions(): Promise<{ id: number; name: string }[]> {
+  async findAllForOptions(): Promise<{ id: number; name: string }[]> {
     return await this.prisma.role.findMany({
       select: {
         id: true,

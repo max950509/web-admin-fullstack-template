@@ -237,7 +237,7 @@ export default function RolePage() {
 						}}
 						modalProps={COMMON_MODAL_PROPS}
 					/>
-					{record.name === "admin" ? (
+					{record.name !== "admin" ? (
 						<a onClick={() => openPermissionModal(record)}>权限</a>
 					) : null}
 					<Popconfirm

@@ -18,17 +18,21 @@ export default <
 	props: MyProTableProps<T, U>,
 ) => {
 	const { requestApi, columns, ...rest } = props;
+	const pagination =
+		rest.pagination === false
+			? false
+			: {
+					showSizeChanger: true,
+					defaultPageSize: 10,
+					...rest.pagination,
+				};
 
 	return (
 		<ProTable<T, U>
 			columns={columns}
 			rowKey={rest.rowKey || "id"}
 			search={{ defaultCollapsed: false, labelWidth: "auto", ...rest.search }}
-			pagination={{
-				showSizeChanger: true,
-				defaultPageSize: 10,
-				...rest.pagination,
-			}}
+			pagination={pagination}
 			scroll={{ x: 1200, ...rest.scroll }} // 或者动态计算总宽度
 			request={
 				requestApi

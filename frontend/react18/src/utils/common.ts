@@ -6,8 +6,12 @@ export function patchSchema<T extends Record<string, any>>(
 ): ProFormColumnsType<T>[] {
 	return cols.map((c) => {
 		const k = String(c.dataIndex ?? "");
-		return overrides[k]
+		const merged = overrides[k]
 			? ({ ...c, ...overrides[k] } as ProFormColumnsType<T>)
-			: c;
+			: ({ ...c } as ProFormColumnsType<T>);
+		if ("width" in merged) {
+			delete (merged as Record<string, unknown>).width;
+		}
+		return merged;
 	});
 }

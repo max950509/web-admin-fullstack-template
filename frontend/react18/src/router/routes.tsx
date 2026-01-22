@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 import { Navigate, Outlet } from "react-router-dom";
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/system/accounts";
+import Permissions from "@/pages/system/permissions";
 import Roles from "@/pages/system/roles";
 
 // 定义你的 handle 类型
@@ -48,6 +49,14 @@ export const allRoutes: AppRouteObject[] = [
 				handle: {
 					title: "角色管理",
 					code: "read:role",
+				},
+			},
+			{
+				path: "permissions",
+				element: <Permissions />,
+				handle: {
+					title: "权限管理",
+					code: "read:permission",
 				},
 			},
 		],
