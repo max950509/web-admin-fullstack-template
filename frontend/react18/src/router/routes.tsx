@@ -2,6 +2,7 @@ import type { RouteObject } from "react-router-dom";
 import { Navigate, Outlet } from "react-router-dom";
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/system/accounts";
+import OperationLogs from "@/pages/system/operation-logs";
 import Permissions from "@/pages/system/permissions";
 import Roles from "@/pages/system/roles";
 
@@ -57,6 +58,14 @@ export const allRoutes: AppRouteObject[] = [
 				handle: {
 					title: "权限管理",
 					code: "read:permission",
+				},
+			},
+			{
+				path: "operation-logs",
+				element: <OperationLogs />,
+				handle: {
+					title: "操作日志",
+					code: "read:operation-log",
 				},
 			},
 		],

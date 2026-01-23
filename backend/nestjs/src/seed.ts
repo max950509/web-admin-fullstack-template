@@ -149,6 +149,17 @@ async function main() {
     },
   });
 
+  const operationLogPage = await prisma.permission.create({
+    data: {
+      name: '操作日志',
+      type: 'page',
+      action: 'read',
+      resource: 'operation-log',
+      parentId: systemMenu.id,
+      sort: 4,
+    },
+  });
+
   console.log('Created permissions...');
 
   // Create roles and connect permissions
@@ -169,6 +180,7 @@ async function main() {
           { permission: { connect: { id: permissionCreate.id } } },
           { permission: { connect: { id: permissionUpdate.id } } },
           { permission: { connect: { id: permissionDelete.id } } },
+          { permission: { connect: { id: operationLogPage.id } } },
         ],
       },
     },

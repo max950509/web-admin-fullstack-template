@@ -136,6 +136,7 @@ const router = createBrowserRouter(
 	[
 		{
 			path: "/",
+			id: "root",
 			element: <App />,
 			loader: rootLoader,
 			// 不依赖路由params，只是单纯验证登录态，只需执行一次即可，所以设置shouldRevalidate为false
