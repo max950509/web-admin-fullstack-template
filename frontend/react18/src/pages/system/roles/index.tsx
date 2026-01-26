@@ -17,7 +17,7 @@ import {
 	Typography,
 } from "antd";
 import type { DataNode } from "antd/es/tree";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type MutableRefObject, useEffect, useRef, useState } from "react";
 import BaseProTable from "@/components/BaseProTable.tsx";
 import DescModal from "@/components/DescModal.tsx";
 import { $getPermissions, type PermissionItem } from "@/services/permission";
@@ -98,6 +98,81 @@ const buildPermissionTree = (permissions: PermissionItem[]) => {
 	return roots.map(prune);
 };
 
+const BASE_COLS: ProColumns<RoleRow>[] = [
+	{
+		title: "ID",
+		dataIndex: "id",
+		hideInSearch: true,
+		hideInForm: true,
+		render: (text, record) => (
+			<DescModal<RoleRow>
+				trigger={<a>{text}</a>}
+				title="角色详情"
+				data={record}
+				columns={DESC_COLUMNS}
+			/>
+		),
+	},
+	{
+		title: "角色名",
+		dataIndex: "name",
+		formItemProps: { rules: [{ required: true, message: "请输入角色名" }] },
+	},
+];
+
+const BASE_FORM_COLS = BASE_COLS as ProFormColumnsType<RoleFormParams>[];
+
+const CREATE_FORM_COLS = patchSchema(BASE_FORM_COLS, {});
+
+const UPDATE_FORM_COLS = patchSchema(BASE_FORM_COLS, {
+	id: { hideInForm: false, fieldProps: { disabled: true } },
+});
+
+const DESC_COLUMNS = patchSchema(BASE_FORM_COLS, {
+	id: { render: (text) => text },
+}) as ProDescriptionsItemProps<RoleRow>[];
+
+const buildOptionColumn = (
+	actionRef: MutableRefObject<ActionType | null>,
+	onOpenPermission: (role: RoleRow) => void,
+): ProColumns<RoleRow> => ({
+	title: "操作",
+	valueType: "option",
+	fixed: "right",
+	width: 200,
+	render: (_, record) => (
+		<Space>
+			<BetaSchemaForm<RoleFormParams>
+				layoutType="ModalForm"
+				title="编辑角色"
+				trigger={<a>编辑</a>}
+				columns={UPDATE_FORM_COLS}
+				initialValues={record}
+				onFinish={async (values) => {
+					await $updateRole(record.id, values);
+					message.success("更新成功");
+					actionRef.current?.reload();
+					return true;
+				}}
+				modalProps={COMMON_MODAL_PROPS}
+			/>
+			{record.name !== "admin" ? (
+				<a onClick={() => onOpenPermission(record)}>权限</a>
+			) : null}
+			<Popconfirm
+				title="确认删除吗"
+				onConfirm={async () => {
+					await $deleteRole(record.id);
+					message.success("删除成功");
+					actionRef.current?.reload();
+				}}
+			>
+				<a>删除</a>
+			</Popconfirm>
+		</Space>
+	),
+});
+
 export default function RolePage() {
 	const actionRef = useRef<ActionType | null>(null);
 	const [permissions, setPermissions] = useState<PermissionItem[]>([]);
@@ -114,16 +189,10 @@ export default function RolePage() {
 		});
 	}, []);
 
-	const treeData = useMemo(
-		() => buildPermissionTree(permissions),
-		[permissions],
+	const treeData = buildPermissionTree(permissions);
+	const permissionMap = new Map(
+		permissions.map((permission) => [permission.id, permission]),
 	);
-
-	const permissionMap = useMemo(() => {
-		return new Map(
-			permissions.map((permission) => [permission.id, permission]),
-		);
-	}, [permissions]);
 
 	const openPermissionModal = async (role: RoleRow) => {
 		setSelectedPermissionIds([]);
@@ -170,92 +239,10 @@ export default function RolePage() {
 		}
 	};
 
-	const baseColumns = useMemo<ProColumns<RoleRow>[]>(() => {
-		return [
-			{
-				title: "ID",
-				dataIndex: "id",
-				hideInSearch: true,
-				hideInForm: true,
-				render: (text, record) => (
-					<DescModal<RoleRow>
-						trigger={<a>{text}</a>}
-						title="角色详情"
-						data={record}
-						columns={descColumns}
-					/>
-				),
-			},
-			{
-				title: "角色名",
-				dataIndex: "name",
-				formItemProps: { rules: [{ required: true, message: "请输入角色名" }] },
-			},
-		];
-	}, []);
-
-	const baseFormCols = useMemo(() => {
-		return baseColumns as ProFormColumnsType<RoleFormParams>[];
-	}, [baseColumns]);
-
-	const createFormCols = useMemo(
-		() => patchSchema(baseFormCols, {}),
-		[baseFormCols],
-	);
-
-	const updateFormCols = useMemo(
-		() =>
-			patchSchema(baseFormCols, {
-				id: { hideInForm: false, fieldProps: { disabled: true } },
-			}),
-		[baseFormCols],
-	);
-
-	const descColumns = useMemo(() => {
-		return baseColumns as ProDescriptionsItemProps<RoleRow>[];
-	}, [baseColumns]);
-
-	const tableColumns = useMemo<ProColumns<RoleRow>[]>(() => {
-		const optionCol: ProColumns<RoleRow> = {
-			title: "操作",
-			valueType: "option",
-			fixed: "right",
-			width: 200,
-			render: (_, record) => (
-				<Space>
-					<BetaSchemaForm<RoleFormParams>
-						layoutType="ModalForm"
-						title="编辑角色"
-						trigger={<a>编辑</a>}
-						columns={updateFormCols}
-						initialValues={record}
-						onFinish={async (values) => {
-							await $updateRole(record.id, values);
-							message.success("更新成功");
-							actionRef.current?.reload();
-							return true;
-						}}
-						modalProps={COMMON_MODAL_PROPS}
-					/>
-					{record.name !== "admin" ? (
-						<a onClick={() => openPermissionModal(record)}>权限</a>
-					) : null}
-					<Popconfirm
-						title="确认删除吗"
-						onConfirm={async () => {
-							await $deleteRole(record.id);
-							message.success("删除成功");
-							actionRef.current?.reload();
-						}}
-					>
-						<a>删除</a>
-					</Popconfirm>
-				</Space>
-			),
-		};
-
-		return [...baseColumns, optionCol];
-	}, [baseColumns, updateFormCols]);
+	const tableColumns = [
+		...BASE_COLS,
+		buildOptionColumn(actionRef, openPermissionModal),
+	];
 
 	return (
 		<>
@@ -267,7 +254,7 @@ export default function RolePage() {
 						layoutType="ModalForm"
 						title="新增角色"
 						trigger={<Button type="primary">新建</Button>}
-						columns={createFormCols}
+						columns={CREATE_FORM_COLS}
 						onFinish={async (values) => {
 							await $createRole({ ...values, permissionIds: [] });
 							message.success("创建成功");

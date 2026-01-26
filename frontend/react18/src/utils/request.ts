@@ -43,14 +43,13 @@ request.interceptors.request.use(
 request.interceptors.response.use(null, (error) => {
 	console.log(error);
 	const data = error?.response?.data;
-	const status = data?.statusCode ?? error?.response?.status;
+	const status = data?.status;
 	if (data?.message) {
 		message.error(data.message);
 	} else if (!error?.response) {
 		message.error("网络异常，请稍后重试");
 	}
 	if (status === 401) {
-		//  && data.error === "Expired"
 		clearToken();
 		// 将当前地址作为参数传递给登录页面
 		if (globalAbortController) {

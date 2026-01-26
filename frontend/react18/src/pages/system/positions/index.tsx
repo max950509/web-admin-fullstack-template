@@ -28,6 +28,11 @@ type PositionRow = PositionItem;
 
 type SelectOption = { label: string; value: number };
 
+const requestDepartmentOptions = async (): Promise<SelectOption[]> => {
+	const { data } = await $getDepartmentOptions();
+	return (data ?? []).map((item) => ({ label: item.name, value: item.id }));
+};
+
 const BASE_COLUMNS: ProColumns<PositionRow>[] = [
 	{
 		title: "ID",
@@ -56,6 +61,7 @@ const BASE_COLUMNS: ProColumns<PositionRow>[] = [
 		fieldProps: {
 			placeholder: "请选择部门",
 		},
+		request: requestDepartmentOptions,
 		render: (_: unknown, record: PositionRow) => record.department?.name ?? "-",
 	},
 	{
@@ -80,69 +86,52 @@ const DESC_COLUMNS = patchSchema(BASE_FORM_COLS, {
 	id: { render: (text) => text },
 }) as ProDescriptionsItemProps<PositionRow>[];
 
+const CREATE_FORM_COLS = patchSchema(BASE_FORM_COLS, {});
+
+const UPDATE_FORM_COLS = patchSchema(BASE_FORM_COLS, {
+	id: { hideInForm: false, fieldProps: { disabled: true } },
+});
+
 const buildOptionColumn = (
 	actionRef: MutableRefObject<ActionType | null>,
-	updateFormCols: ProFormColumnsType<PositionFormParams>[],
-): ProColumns<PositionRow> => {
-	return {
-		title: "操作",
-		valueType: "option",
-		fixed: "right",
-		width: 160,
-		render: (_, record) => (
-			<Space>
-				<BetaSchemaForm<PositionFormParams>
-					layoutType="ModalForm"
-					title="编辑岗位"
-					trigger={<a>编辑</a>}
-					columns={updateFormCols}
-					initialValues={record}
-					onFinish={async (values) => {
-						await $updatePosition(record.id, values);
-						message.success("更新成功");
-						actionRef.current?.reload();
-						return true;
-					}}
-					modalProps={COMMON_MODAL_PROPS}
-				/>
-				<Popconfirm
-					title="确认删除吗"
-					onConfirm={async () => {
-						await $deletePosition(record.id);
-						message.success("删除成功");
-						actionRef.current?.reload();
-					}}
-				>
-					<a>删除</a>
-				</Popconfirm>
-			</Space>
-		),
-	};
-};
+): ProColumns<PositionRow> => ({
+	title: "操作",
+	valueType: "option",
+	fixed: "right",
+	width: 160,
+	render: (_, record) => (
+		<Space>
+			<BetaSchemaForm<PositionFormParams>
+				layoutType="ModalForm"
+				title="编辑岗位"
+				trigger={<a>编辑</a>}
+				columns={UPDATE_FORM_COLS}
+				initialValues={record}
+				onFinish={async (values) => {
+					await $updatePosition(record.id, values);
+					message.success("更新成功");
+					actionRef.current?.reload();
+					return true;
+				}}
+				modalProps={COMMON_MODAL_PROPS}
+			/>
+			<Popconfirm
+				title="确认删除吗"
+				onConfirm={async () => {
+					await $deletePosition(record.id);
+					message.success("删除成功");
+					actionRef.current?.reload();
+				}}
+			>
+				<a>删除</a>
+			</Popconfirm>
+		</Space>
+	),
+});
 
 export default function PositionPage() {
 	const actionRef = useRef<ActionType | null>(null);
-	const requestDepartmentOptions = async (): Promise<SelectOption[]> => {
-		const { data } = await $getDepartmentOptions();
-		return data.map((item) => ({ label: item.name, value: item.id }));
-	};
-
-	const createFormCols = patchSchema(BASE_FORM_COLS, {
-		departmentId: { request: requestDepartmentOptions },
-	});
-	const updateFormCols = patchSchema(BASE_FORM_COLS, {
-		id: { hideInForm: false, fieldProps: { disabled: true } },
-		departmentId: { request: requestDepartmentOptions },
-	});
-
-	const tableColumns = [
-		...BASE_COLUMNS.map((column) =>
-			column.dataIndex === "departmentId"
-				? { ...column, request: requestDepartmentOptions }
-				: column,
-		),
-		buildOptionColumn(actionRef, updateFormCols),
-	];
+	const tableColumns = [...BASE_COLUMNS, buildOptionColumn(actionRef)];
 
 	return (
 		<BaseProTable<PositionRow, PositionQuery>
@@ -153,7 +142,7 @@ export default function PositionPage() {
 					layoutType="ModalForm"
 					title="新增岗位"
 					trigger={<Button type="primary">新建</Button>}
-					columns={createFormCols}
+					columns={CREATE_FORM_COLS}
 					onFinish={async (values) => {
 						await $createPosition(values);
 						message.success("创建成功");

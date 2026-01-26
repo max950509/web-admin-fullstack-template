@@ -14,6 +14,7 @@ import DescModal from "@/components/DescModal.tsx";
 import {
 	$createDepartment,
 	$deleteDepartment,
+	$getDepartmentOptions,
 	$getDepartments,
 	$updateDepartment,
 	type DepartmentFormParams,
@@ -29,6 +30,22 @@ type DepartmentQuery = {
 };
 
 type SelectOption = { label: string; value: number };
+
+const departmentNameMap = new Map<number, string>();
+
+const syncDepartmentNameMap = (items: DepartmentItem[]) => {
+	departmentNameMap.clear();
+	items.forEach((item) => {
+		departmentNameMap.set(item.id, item.name);
+	});
+};
+
+const getDepartmentName = (parentId?: number | null) => {
+	if (!parentId) {
+		return "-";
+	}
+	return departmentNameMap.get(parentId) ?? parentId;
+};
 
 const normalizeKeyword = (value?: string) => value?.trim().toLowerCase() ?? "";
 
@@ -113,8 +130,13 @@ const buildTree = (items: DepartmentItem[]) => {
 	return roots;
 };
 
-const mapParentOptions = (items: DepartmentItem[]): SelectOption[] => {
+const mapParentOptions = (items: { id: number; name: string }[]) => {
 	return items.map((item) => ({ label: item.name, value: item.id }));
+};
+
+const requestParentOptions = async (): Promise<SelectOption[]> => {
+	const { data } = await $getDepartmentOptions();
+	return mapParentOptions(data ?? []);
 };
 
 const BASE_COLUMNS: ProColumns<DepartmentRow>[] = [
@@ -147,7 +169,9 @@ const BASE_COLUMNS: ProColumns<DepartmentRow>[] = [
 			optionFilterProp: "label",
 			placeholder: "请选择父级部门",
 		},
-		render: (_, record) => record.parentId ?? "-",
+		request: requestParentOptions,
+		render: (_: unknown, record: DepartmentRow) =>
+			getDepartmentName(record.parentId),
 	},
 	{
 		title: "排序",
@@ -179,14 +203,14 @@ const DESC_COLUMNS = patchSchema(BASE_FORM_COLS, {
 	id: { render: (text) => text },
 }) as ProDescriptionsItemProps<DepartmentRow>[];
 
+const CREATE_FORM_COLS = patchSchema(BASE_FORM_COLS, {});
+
+const UPDATE_FORM_COLS = patchSchema(BASE_FORM_COLS, {
+	id: { hideInForm: false, fieldProps: { disabled: true } },
+});
+
 const buildOptionColumn = (
 	actionRef: MutableRefObject<ActionType | null>,
-	updateFormCols: ProFormColumnsType<DepartmentFormParams>[],
-	onUpdate: (
-		record: DepartmentRow,
-		values: DepartmentFormParams,
-	) => Promise<void>,
-	onDelete: (record: DepartmentRow) => Promise<void>,
 ): ProColumns<DepartmentRow> => ({
 	title: "操作",
 	valueType: "option",
@@ -198,10 +222,12 @@ const buildOptionColumn = (
 				layoutType="ModalForm"
 				title="编辑部门"
 				trigger={<a>编辑</a>}
-				columns={updateFormCols}
+				columns={UPDATE_FORM_COLS}
 				initialValues={record}
 				onFinish={async (values) => {
-					await onUpdate(record, values);
+					await $updateDepartment(record.id, values);
+					message.success("更新成功");
+					actionRef.current?.reload();
 					return true;
 				}}
 				modalProps={COMMON_MODAL_PROPS}
@@ -209,7 +235,9 @@ const buildOptionColumn = (
 			<Popconfirm
 				title="确认删除吗"
 				onConfirm={async () => {
-					await onDelete(record);
+					await $deleteDepartment(record.id);
+					message.success("删除成功");
+					actionRef.current?.reload();
 				}}
 			>
 				<a>删除</a>
@@ -220,66 +248,15 @@ const buildOptionColumn = (
 
 export default function DepartmentPage() {
 	const actionRef = useRef<ActionType | null>(null);
-	const departmentMapRef = useRef<Map<number, DepartmentItem>>(new Map());
-
-	const syncDepartments = (items: DepartmentItem[]) => {
-		departmentMapRef.current = new Map(items.map((item) => [item.id, item]));
-	};
 
 	const fetchDepartments = async () => {
 		const { data } = await $getDepartments();
 		const items = data ?? [];
-		syncDepartments(items);
+		syncDepartmentNameMap(items);
 		return items;
 	};
 
-	const requestParentOptions = async () => {
-		const items = await fetchDepartments();
-		return mapParentOptions(items);
-	};
-
-	const parentName = (parentId?: number | null) => {
-		if (!parentId) {
-			return "-";
-		}
-		return departmentMapRef.current.get(parentId)?.name ?? parentId;
-	};
-
-	const createFormCols = patchSchema(BASE_FORM_COLS, {
-		parentId: { request: requestParentOptions },
-	});
-	const updateFormCols = patchSchema(BASE_FORM_COLS, {
-		id: { hideInForm: false, fieldProps: { disabled: true } },
-		parentId: { request: requestParentOptions },
-	});
-
-	const tableColumns = [
-		...BASE_COLUMNS.map((column) => {
-			if (column.dataIndex === "parentId") {
-				return {
-					...column,
-					render: (_: unknown, record: DepartmentRow) =>
-						parentName(record.parentId),
-					request: requestParentOptions,
-				};
-			}
-			return column;
-		}),
-		buildOptionColumn(
-			actionRef,
-			updateFormCols,
-			async (record, values) => {
-				await $updateDepartment(record.id, values);
-				message.success("更新成功");
-				actionRef.current?.reload();
-			},
-			async (record) => {
-				await $deleteDepartment(record.id);
-				message.success("删除成功");
-				actionRef.current?.reload();
-			},
-		),
-	];
+	const tableColumns = [...BASE_COLUMNS, buildOptionColumn(actionRef)];
 
 	return (
 		<BaseProTable<DepartmentRow, DepartmentQuery>
@@ -290,7 +267,7 @@ export default function DepartmentPage() {
 					layoutType="ModalForm"
 					title="新增部门"
 					trigger={<Button type="primary">新建</Button>}
-					columns={createFormCols}
+					columns={CREATE_FORM_COLS}
 					onFinish={async (values) => {
 						await $createDepartment(values);
 						message.success("创建成功");
