@@ -6,6 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class UpdateUserDto {
   @IsString()
@@ -29,4 +30,14 @@ export class UpdateUserDto {
   @IsInt({ each: true })
   @IsOptional()
   roleIds?: number[];
+
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  departmentId?: number | null;
+
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  positionId?: number | null;
 }

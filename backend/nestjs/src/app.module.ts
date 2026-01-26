@@ -8,6 +8,8 @@ import { RoleModule } from './modules/role/role.module';
 import { PermissionModule } from './modules/permission/permission.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
+import { DepartmentModule } from './modules/department/department.module';
+import { PositionModule } from './modules/position/position.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { OperationLogInterceptor } from './core/interceptors/operation-log.interceptor';
 
@@ -22,6 +24,8 @@ import { OperationLogInterceptor } from './core/interceptors/operation-log.inter
     UserModule,
     RoleModule,
     PermissionModule,
+    DepartmentModule,
+    PositionModule,
     OperationLogModule,
   ],
   controllers: [AppController],

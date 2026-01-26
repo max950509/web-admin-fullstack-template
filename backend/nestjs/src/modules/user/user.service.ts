@@ -1,6 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { User, Role, Prisma, Permission } from '@prisma/client';
+import {
+  User,
+  Role,
+  Prisma,
+  Permission,
+  Department,
+  Position,
+} from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,15 +18,25 @@ import {
 import type { PageResult } from '../../core/types/page-result';
 import { QueryUserDto } from './dto/query-user.dto';
 
-type SafeUser = Pick<User, 'id' | 'username' | 'isOtpEnabled'>;
-type UserWithRoles = User & { roles: Role[] };
+type SafeUser = Pick<
+  User,
+  'id' | 'username' | 'isOtpEnabled' | 'departmentId' | 'positionId'
+> & {
+  department?: Department | null;
+  position?: Position | null;
+};
+type UserWithRoles = SafeUser & { roles: Role[] };
 type RoleWithPermissions = Role & {
   permissions: Permission[];
 };
 type UserWithRolesAndPermissions = SafeUser & { roles: RoleWithPermissions[] };
 
 type UserWithRoleLinks = Prisma.UserGetPayload<{
-  include: { userRoles: { include: { role: true } } };
+  include: {
+    userRoles: { include: { role: true } };
+    department: true;
+    position: true;
+  };
 }>;
 
 @Injectable()
@@ -34,7 +51,9 @@ export class UserService {
     };
   }
 
-  private sanitizeUser(user: User): SafeUser {
+  private sanitizeUser<
+    T extends { password?: string | null; otpSecret?: string | null },
+  >(user: T): Omit<T, 'password' | 'otpSecret'> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, otpSecret, ...safeUser } = user;
     return safeUser;
@@ -110,7 +129,11 @@ export class UserService {
     const total = await this.prisma.user.count({ where });
     const users = await this.prisma.user.findMany({
       where,
-      include: { userRoles: { include: { role: true } } },
+      include: {
+        userRoles: { include: { role: true } },
+        department: true,
+        position: true,
+      },
       orderBy: { id: 'desc' },
       skip,
       take,
@@ -122,7 +145,11 @@ export class UserService {
   async findUserByIdWithRole(id: number): Promise<SafeUser> {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: { userRoles: { include: { role: true } } },
+      include: {
+        userRoles: { include: { role: true } },
+        department: true,
+        position: true,
+      },
     });
     if (!user) {
       throw new Error(`User with ID #${id} not found`);
@@ -131,13 +158,16 @@ export class UserService {
   }
 
   async create(createUserDto: CreateUserDto): Promise<SafeUser> {
-    const { username, password, roleIds } = createUserDto;
+    const { username, password, roleIds, departmentId, positionId } =
+      createUserDto;
     const hashedPassword = await bcrypt.hash(password, 10);
     try {
       const user = await this.prisma.user.create({
         data: {
           username,
           password: hashedPassword,
+          departmentId,
+          positionId,
           userRoles: roleIds?.length
             ? {
                 create: roleIds.map((roleId) => ({
@@ -146,7 +176,11 @@ export class UserService {
               }
             : undefined,
         },
-        include: { userRoles: { include: { role: true } } },
+        include: {
+          userRoles: { include: { role: true } },
+          department: true,
+          position: true,
+        },
       });
       return this.sanitizeUser(this.mapRoles(user));
     } catch (error) {
@@ -184,7 +218,11 @@ export class UserService {
     const user = await this.prisma.user.update({
       where: { id },
       data,
-      include: { userRoles: { include: { role: true } } },
+      include: {
+        userRoles: { include: { role: true } },
+        department: true,
+        position: true,
+      },
     });
     return this.sanitizeUser(this.mapRoles(user));
   }

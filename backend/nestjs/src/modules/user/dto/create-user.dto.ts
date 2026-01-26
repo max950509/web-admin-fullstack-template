@@ -6,6 +6,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateUserDto {
   @IsString()
@@ -21,4 +22,14 @@ export class CreateUserDto {
   @IsInt({ each: true })
   @IsOptional()
   roleIds?: number[];
+
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  departmentId?: number | null;
+
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  positionId?: number | null;
 }

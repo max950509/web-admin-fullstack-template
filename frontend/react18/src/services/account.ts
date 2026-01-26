@@ -4,6 +4,18 @@ import request from "@/utils/request";
 export interface AccountRow {
 	id: number;
 	username: string;
+	departmentId?: number | null;
+	positionId?: number | null;
+	department?: {
+		id: number;
+		name: string;
+	} | null;
+	position?: {
+		id: number;
+		name: string;
+		departmentId?: number | null;
+		departmentName?: string | null;
+	} | null;
 	roles: {
 		id: number;
 		name: string;
@@ -19,6 +31,8 @@ export interface AccountFormParams {
 	username: string;
 	password: string;
 	roleIds: number[];
+	departmentId?: number | null;
+	positionId?: number | null;
 }
 
 export const $getAccounts = async (params?: AccountQuery) =>

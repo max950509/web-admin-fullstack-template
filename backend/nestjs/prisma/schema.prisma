@@ -18,11 +18,15 @@ model User {
   password     String
   otpSecret    String?
   isOtpEnabled Boolean  @default(false)
+  departmentId Int?
+  positionId   Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
   userRoles UserRole[]
   operationLogs OperationLog[]
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
 
   @@map("users")
 }
@@ -80,6 +84,35 @@ model RolePermission {
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String
+  parentId  Int?
+  sort      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  parent   Department?  @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Department[] @relation("DepartmentTree")
+  positions Position[]
+  users     User[]
+
+  @@map("departments")
+}
+
+model Position {
+  id           Int      @id @default(autoincrement())
+  name         String
+  departmentId Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  users      User[]
+
+  @@map("positions")
 }
 
 model OperationLog {

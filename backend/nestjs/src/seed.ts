@@ -11,7 +11,10 @@ async function main() {
   console.log('Seeding database...');
 
   // Clear existing data in reverse order of dependency
+  await prisma.operationLog.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.position.deleteMany({});
+  await prisma.department.deleteMany({});
   await prisma.role.deleteMany({});
   await prisma.permission.deleteMany({});
 
@@ -160,6 +163,88 @@ async function main() {
     },
   });
 
+  const departmentPage = await prisma.permission.create({
+    data: {
+      name: '部门管理',
+      type: 'page',
+      action: 'read',
+      resource: 'department',
+      parentId: systemMenu.id,
+      sort: 5,
+    },
+  });
+  const departmentCreate = await prisma.permission.create({
+    data: {
+      name: '新增部门',
+      type: 'action',
+      action: 'create',
+      resource: 'department',
+      parentId: departmentPage.id,
+      sort: 1,
+    },
+  });
+  const departmentUpdate = await prisma.permission.create({
+    data: {
+      name: '编辑部门',
+      type: 'action',
+      action: 'update',
+      resource: 'department',
+      parentId: departmentPage.id,
+      sort: 2,
+    },
+  });
+  const departmentDelete = await prisma.permission.create({
+    data: {
+      name: '删除部门',
+      type: 'action',
+      action: 'delete',
+      resource: 'department',
+      parentId: departmentPage.id,
+      sort: 3,
+    },
+  });
+
+  const positionPage = await prisma.permission.create({
+    data: {
+      name: '岗位管理',
+      type: 'page',
+      action: 'read',
+      resource: 'position',
+      parentId: systemMenu.id,
+      sort: 6,
+    },
+  });
+  const positionCreate = await prisma.permission.create({
+    data: {
+      name: '新增岗位',
+      type: 'action',
+      action: 'create',
+      resource: 'position',
+      parentId: positionPage.id,
+      sort: 1,
+    },
+  });
+  const positionUpdate = await prisma.permission.create({
+    data: {
+      name: '编辑岗位',
+      type: 'action',
+      action: 'update',
+      resource: 'position',
+      parentId: positionPage.id,
+      sort: 2,
+    },
+  });
+  const positionDelete = await prisma.permission.create({
+    data: {
+      name: '删除岗位',
+      type: 'action',
+      action: 'delete',
+      resource: 'position',
+      parentId: positionPage.id,
+      sort: 3,
+    },
+  });
+
   console.log('Created permissions...');
 
   // Create roles and connect permissions
@@ -181,6 +266,14 @@ async function main() {
           { permission: { connect: { id: permissionUpdate.id } } },
           { permission: { connect: { id: permissionDelete.id } } },
           { permission: { connect: { id: operationLogPage.id } } },
+          { permission: { connect: { id: departmentPage.id } } },
+          { permission: { connect: { id: departmentCreate.id } } },
+          { permission: { connect: { id: departmentUpdate.id } } },
+          { permission: { connect: { id: departmentDelete.id } } },
+          { permission: { connect: { id: positionPage.id } } },
+          { permission: { connect: { id: positionCreate.id } } },
+          { permission: { connect: { id: positionUpdate.id } } },
+          { permission: { connect: { id: positionDelete.id } } },
         ],
       },
     },
@@ -197,12 +290,48 @@ async function main() {
 
   console.log('Created roles...');
 
+  const hqDepartment = await prisma.department.create({
+    data: {
+      name: '总部',
+      sort: 1,
+    },
+  });
+  const techDepartment = await prisma.department.create({
+    data: {
+      name: '技术部',
+      parentId: hqDepartment.id,
+      sort: 1,
+    },
+  });
+  const opsDepartment = await prisma.department.create({
+    data: {
+      name: '运营部',
+      parentId: hqDepartment.id,
+      sort: 2,
+    },
+  });
+
+  const techLead = await prisma.position.create({
+    data: {
+      name: '技术负责人',
+      departmentId: techDepartment.id,
+    },
+  });
+  const operator = await prisma.position.create({
+    data: {
+      name: '运营专员',
+      departmentId: opsDepartment.id,
+    },
+  });
+
   // Create users and connect roles
   const adminPassword = await bcrypt.hash('password123', 10);
   await prisma.user.create({
     data: {
       username: 'admin',
       password: adminPassword,
+      departmentId: techDepartment.id,
+      positionId: techLead.id,
       userRoles: {
         create: [{ role: { connect: { id: adminRole.id } } }],
       },
@@ -214,6 +343,8 @@ async function main() {
     data: {
       username: 'john.doe',
       password: userPassword,
+      departmentId: opsDepartment.id,
+      positionId: operator.id,
       userRoles: {
         create: [{ role: { connect: { id: userRole.id } } }],
       },
