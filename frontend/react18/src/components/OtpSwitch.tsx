@@ -1,41 +1,22 @@
 import {
 	Alert,
-	Descriptions,
 	Form,
 	Input,
 	Modal,
 	message,
-	Segmented,
 	Space,
 	Switch,
 	Typography,
 } from "antd";
-import React, { useEffect, useState } from "react";
-import {
-	$enableOpt,
-	$generateOpt,
-	type ProfileResponse,
-} from "@/services/auth.ts";
+import { useState } from "react";
+import { $enableOpt, $generateOpt } from "@/services/auth.ts";
 
 interface IProps {
-	trigger: React.ReactElement;
-	visible?: boolean;
-	userInfo: ProfileResponse;
+	optEnabled: boolean;
 }
 
-const Settings: React.FC<IProps> = (props) => {
-	const { trigger, visible, userInfo } = props;
-	const [modalVisible, setModalVisible] = useState<boolean>(visible || false);
-	const [item, setItem] = useState("账号");
-	const [otpEnabled, setOtpEnabled] = useState<boolean>(userInfo.isOtpEnabled);
-
-	useEffect(() => {
-		setModalVisible(visible || false);
-	}, [visible]);
-
-	const handleTrigger = () => {
-		setModalVisible(true);
-	};
+export default function OtpSwitch(props: IProps) {
+	const [otpEnabled, setOtpEnabled] = useState<boolean>(props.optEnabled);
 
 	const handleBindOtp = async (value: string) => {
 		await $enableOpt({
@@ -52,6 +33,7 @@ const Settings: React.FC<IProps> = (props) => {
 		// 弹窗绑定OPT二次认证
 		Modal.confirm({
 			icon: null,
+			closable: true,
 			content: (
 				<div>
 					<Typography.Title level={5} style={{ margin: 0 }}>
@@ -128,53 +110,10 @@ const Settings: React.FC<IProps> = (props) => {
 	};
 
 	return (
-		<>
-			{trigger && React.cloneElement(trigger, { onClick: handleTrigger })}
-			<Modal
-				title="设置"
-				destroyOnHidden
-				maskClosable={false}
-				open={modalVisible}
-				onCancel={() => setModalVisible(false)}
-				footer={null}
-			>
-				<Segmented
-					options={["账号", "安全"]}
-					value={item}
-					onChange={setItem}
-					style={{ marginBottom: 16 }}
-				/>
-				{item === "账号" && (
-					<Descriptions
-						bordered
-						size="small"
-						items={[
-							{ label: "ID", children: userInfo.id },
-							{ label: "账号", children: userInfo.username },
-						]}
-					/>
-				)}
-				{item === "安全" && (
-					<Descriptions
-						bordered
-						size="small"
-						items={[
-							{
-								label: "开启OTP二次认证",
-								children: (
-									<Switch
-										checked={otpEnabled}
-										onChange={handleOptChange}
-										disabled={otpEnabled}
-									/>
-								),
-							},
-						]}
-					/>
-				)}
-			</Modal>
-		</>
+		<Switch
+			checked={otpEnabled}
+			onChange={handleOptChange}
+			disabled={otpEnabled}
+		/>
 	);
-};
-
-export default Settings;
+}

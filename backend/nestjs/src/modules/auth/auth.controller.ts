@@ -71,4 +71,21 @@ export class AuthController {
   getProfile(@ReqUser() user: User) {
     return this.authService.getProfile(user.id);
   }
+
+  @UseGuards(TokenAuthGuard)
+  @Post('logout')
+  async logout(@Request() req: RequestWithUser<User>) {
+    const headerValue = req.headers.authorization;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const authHeader = Array.isArray(headerValue)
+      ? headerValue[0]
+      : headerValue;
+    return this.authService.logout(authHeader);
+  }
+
+  @UseGuards(TokenAuthGuard)
+  @Post('logout/all')
+  async logoutAll(@ReqUser() user: User) {
+    return this.authService.logoutAll(user.id);
+  }
 }

@@ -9,9 +9,12 @@ import {
 	useNavigate,
 } from "react-router-dom";
 import logo from "@/assets/logo.svg";
-import Settings from "@/components/Settings.tsx";
 import { allRoutes } from "@/router/routes.tsx";
-import type { ProfileResponse } from "@/services/auth.ts";
+import {
+	$postLogout,
+	$postLogoutAll,
+	type ProfileResponse,
+} from "@/services/auth.ts";
 import { clearToken } from "@/utils/auth.ts";
 import { emitter, KEY_AUTH_EXPIRED } from "@/utils/mitt.ts";
 import { generateMenus } from "@/utils/permission.ts";
@@ -22,7 +25,22 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 	const navigate = useNavigate();
 	const userInfo = useLoaderData() as ProfileResponse;
 
-	const handleLogout = () => {
+	const handleLogout = async () => {
+		try {
+			await $postLogout();
+		} catch {
+			// Ignore logout errors and clear local auth state.
+		}
+		clearToken();
+		navigate("/login");
+	};
+
+	const handleLogoutAll = async () => {
+		try {
+			await $postLogoutAll();
+		} catch {
+			// Ignore logout errors and clear local auth state.
+		}
 		clearToken();
 		navigate("/login");
 	};
@@ -59,10 +77,8 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 						menu={{
 							items: [
 								{
-									key: "update-pwd",
-									label: (
-										<Settings userInfo={userInfo} trigger={<div>设置</div>} />
-									),
+									key: "logout-all",
+									label: <div onClick={handleLogoutAll}>退出所有会话</div>,
 								},
 								{
 									key: "logout",

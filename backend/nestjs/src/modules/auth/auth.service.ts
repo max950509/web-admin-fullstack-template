@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { User, Role, Permission } from '@prisma/client';
 import * as svgCaptcha from 'svg-captcha';
@@ -28,12 +27,18 @@ export type UserWithRoles = Pick<User, 'id' | 'username' | 'isOtpEnabled'> & {
 
 type TokenScope = 'access' | '2fa';
 
+const ACCESS_TOKEN_TTL_MS = 12 * 60 * 60 * 1000;
+const TWO_FACTOR_TOKEN_TTL_MS = 5 * 60 * 1000;
+const MAX_SESSION_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
+
 type StoredToken = {
   userId: number;
   username: string;
   scope: TokenScope;
   ver: number; // Per-user session version to invalidate all tokens at once.
   issuedAt: number;
+  lastRenewAt?: number; // Throttle sliding renewals for access tokens.
+  sessionExpiresAt?: number; // Absolute max session expiry for access tokens.
 };
 
 @Injectable()
@@ -41,24 +46,18 @@ export class AuthService {
   private readonly captchaTtlMs = 5 * 60 * 1000;
   private readonly accessTokenTtlMs: number;
   private readonly twoFactorTokenTtlMs: number;
+  private readonly maxSessionLifetimeMs: number;
 
   constructor(
     private readonly userService: UserService,
-    private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {
-    this.accessTokenTtlMs = this.getTtlMs(
-      'TOKEN_TTL_MS',
-      7 * 24 * 60 * 60 * 1000,
+    this.accessTokenTtlMs = ACCESS_TOKEN_TTL_MS;
+    this.twoFactorTokenTtlMs = TWO_FACTOR_TOKEN_TTL_MS;
+    this.maxSessionLifetimeMs = Math.max(
+      ACCESS_TOKEN_TTL_MS,
+      MAX_SESSION_LIFETIME_MS,
     );
-    this.twoFactorTokenTtlMs = this.getTtlMs('TOKEN_2FA_TTL_MS', 5 * 60 * 1000);
-  }
-
-  private getTtlMs(key: string, fallbackMs: number): number {
-    const raw = this.configService.get<string>(key);
-    if (!raw) return fallbackMs;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs;
   }
 
   private getTokenKey(token: string): string {
@@ -89,14 +88,28 @@ export class AuthService {
   ): Promise<string> {
     const token = randomBytes(32).toString('base64url');
     const ver = await this.getOrInitUserVersion(user.id);
+    const issuedAt = Date.now();
+    const sessionExpiresAt =
+      scope === 'access' ? issuedAt + this.maxSessionLifetimeMs : undefined;
+    // Cap the initial TTL so the session cannot exceed the absolute max lifetime.
+    const effectiveTtlMs =
+      scope === 'access' && sessionExpiresAt
+        ? Math.min(ttlMs, this.maxSessionLifetimeMs)
+        : ttlMs;
     const record: StoredToken = {
       userId: user.id,
       username: user.username,
       scope,
       ver,
-      issuedAt: Date.now(),
+      issuedAt,
+      lastRenewAt: issuedAt,
+      sessionExpiresAt,
     };
-    await this.cacheManager.set(this.getTokenKey(token), record, ttlMs);
+    await this.cacheManager.set(
+      this.getTokenKey(token),
+      record,
+      effectiveTtlMs,
+    );
     return token;
   }
 
@@ -294,5 +307,19 @@ export class AuthService {
       message: '登录成功',
       accessToken,
     };
+  }
+
+  async logout(token?: string) {
+    if (!token) {
+      throw new UnauthorizedException('Missing authorization token');
+    }
+    await this.cacheManager.del(this.getTokenKey(token));
+    return { message: '退出成功' };
+  }
+
+  async logoutAll(userId: number) {
+    const currentVer = await this.getOrInitUserVersion(userId);
+    await this.cacheManager.set(this.getUserVersionKey(userId), currentVer + 1);
+    return { message: '已退出所有会话' };
   }
 }

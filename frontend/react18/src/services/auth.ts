@@ -59,3 +59,7 @@ export interface ProfileResponse {
 }
 export const $getProfile = async () =>
 	request.get<ProfileResponse>("/auth/profile");
+
+export const $postLogout = async () => request.post<void>("/auth/logout");
+export const $postLogoutAll = async () =>
+	request.post<void>("/auth/logout/all");

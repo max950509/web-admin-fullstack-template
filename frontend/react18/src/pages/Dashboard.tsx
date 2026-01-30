@@ -2,13 +2,9 @@ import { useRequest } from "ahooks";
 import { Card, Col, List, Row, Space, Tag, Typography } from "antd";
 import { useMemo } from "react";
 import { useRouteLoaderData } from "react-router-dom";
+import OptSwitch from "@/components/OtpSwitch";
 import type { ProfileResponse } from "@/services/auth";
 import { $getMyOperationLogs } from "@/services/operation-log";
-
-const STATUS_COLORS: Record<string, string> = {
-	ok: "green",
-	warn: "orange",
-};
 
 const methodTagColor = (method: string) => {
 	switch (method) {
@@ -61,16 +57,9 @@ function Dashboard() {
 							</div>
 							<div>
 								<Typography.Text type="secondary">双因素认证</Typography.Text>
+
 								<div>
-									<Tag
-										color={
-											profile.isOtpEnabled
-												? STATUS_COLORS.ok
-												: STATUS_COLORS.warn
-										}
-									>
-										{profile.isOtpEnabled ? "已启用" : "未启用"}
-									</Tag>
+									<OptSwitch optEnabled={profile.isOtpEnabled} />
 								</div>
 							</div>
 						</Space>
