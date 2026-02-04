@@ -7,19 +7,36 @@ import {
 	BetaSchemaForm,
 	type ProFormColumnsType,
 } from "@ant-design/pro-components";
-import { Button, message, Popconfirm, Space, Tag } from "antd";
-import { type MutableRefObject, useRef } from "react";
+import {
+	Button,
+	Dropdown,
+	Modal,
+	message,
+	Popconfirm,
+	Radio,
+	Space,
+	Tag,
+	Upload,
+} from "antd";
+import { type Key, type MutableRefObject, useRef, useState } from "react";
 import BaseProTable from "@/components/BaseProTable.tsx";
 import DescModal from "@/components/DescModal.tsx";
 import {
+	$batchDeleteAccounts,
 	$createAccount,
 	$deleteAccount,
+	$downloadAccountTemplate,
 	$getAccounts,
+	$importAccounts,
 	$updateAccount,
 	type AccountFormParams,
+	type AccountImportResult,
+	type AccountQuery,
 	type AccountRow,
+	type ImportMode,
 } from "@/services/account";
 import { $getDepartmentOptions } from "@/services/department";
+import { $createExportTask } from "@/services/export-task";
 import { $getPositionOptions } from "@/services/position";
 import { $getRolesOptions } from "@/services/role";
 import { patchSchema } from "@/utils/common.ts";
@@ -169,32 +186,229 @@ const buildOptionColumn = (
 	};
 };
 
+const buildFileStamp = () => {
+	const now = new Date();
+	const pad = (value: number) => String(value).padStart(2, "0");
+	return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+};
+
+const downloadBlob = (blob: Blob, filename: string) => {
+	const url = window.URL.createObjectURL(blob);
+	const link = document.createElement("a");
+	link.href = url;
+	link.download = filename;
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	window.URL.revokeObjectURL(url);
+};
+
+const handleImportErrors = (result: AccountImportResult) => {
+	if (!result.failCount) {
+		return;
+	}
+	Modal.info({
+		title: "导入失败明细",
+		content: (
+			<div style={{ maxHeight: 300, overflow: "auto" }}>
+				{result.errors.slice(0, 10).map((item) => (
+					<div key={`${item.row}-${item.message}`}>
+						第 {item.row} 行：{item.message}
+					</div>
+				))}
+				{result.errors.length > 10 ? <div>仅展示前 10 条失败记录</div> : null}
+			</div>
+		),
+	});
+};
+
 export default function Account() {
 	const actionRef = useRef<ActionType | null>(null);
+	const lastQueryRef = useRef<AccountQuery>({});
+	const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
+	const [importOpen, setImportOpen] = useState(false);
+	const [importFile, setImportFile] = useState<File | null>(null);
+	const [importMode, setImportMode] = useState<ImportMode>("insert");
+	const [importing, setImporting] = useState(false);
 
 	const tableColumns = [...BASE_COLS, buildOptionColumn(actionRef)];
+
+	const requestAccounts = async (
+		params: AccountQuery & { current?: number; pageSize?: number },
+	) => {
+		const { current, pageSize, ...rest } = params;
+		lastQueryRef.current = rest;
+		const { data } = await $getAccounts({
+			...rest,
+			page: current,
+			pageSize,
+		});
+		return {
+			data: data.list,
+			total: data.total,
+			success: true,
+		};
+	};
+
+	const handleExport = async (format: "csv" | "xlsx") => {
+		try {
+			await $createExportTask({
+				type: "account",
+				format,
+				params: lastQueryRef.current,
+			});
+			message.success("导出任务已创建，请到导出任务查看");
+		} catch {
+			message.error("创建导出任务失败");
+		}
+	};
+
+	const handleDownloadTemplate = async (format: "csv" | "xlsx") => {
+		try {
+			const { data } = await $downloadAccountTemplate(format);
+			downloadBlob(data, `accounts-template-${buildFileStamp()}.${format}`);
+		} catch {
+			message.error("模板下载失败");
+		}
+	};
+
+	const handleBatchDelete = () => {
+		if (!selectedRowKeys.length) {
+			return;
+		}
+		Modal.confirm({
+			title: "确认删除选中的账号吗？",
+			onOk: async () => {
+				await $batchDeleteAccounts(selectedRowKeys as number[]);
+				message.success("删除成功");
+				setSelectedRowKeys([]);
+				actionRef.current?.reload();
+			},
+		});
+	};
+
+	const handleImport = async () => {
+		if (!importFile) {
+			message.warning("请先选择文件");
+			return;
+		}
+		setImporting(true);
+		try {
+			const { data } = await $importAccounts(importFile, importMode);
+			message.success(
+				`导入完成：成功 ${data.successCount} 条，失败 ${data.failCount} 条`,
+			);
+			handleImportErrors(data);
+			setImportOpen(false);
+			setImportFile(null);
+			actionRef.current?.reload();
+		} finally {
+			setImporting(false);
+		}
+	};
+
 	return (
-		<BaseProTable<AccountRow, Record<string, any>>
-			actionRef={actionRef}
-			toolBarRender={() => [
-				<BetaSchemaForm<AccountFormParams>
-					key="create"
-					layoutType="ModalForm"
-					title="新增账号"
-					trigger={<Button type="primary">新建</Button>}
-					columns={CREATE_FORM_COLS}
-					onFinish={async (values) => {
-						await $createAccount(values);
-						message.success("创建成功");
-						actionRef.current?.reload();
-						return true;
-					}}
-					modalProps={COMMON_MODAL_PROPS}
-				/>,
-			]}
-			requestApi={$getAccounts}
-			columns={tableColumns}
-			scroll={{ x: "100%" }}
-		/>
+		<>
+			<BaseProTable<AccountRow, Record<string, any>>
+				actionRef={actionRef}
+				toolBarRender={() => [
+					<BetaSchemaForm<AccountFormParams>
+						key="create"
+						layoutType="ModalForm"
+						title="新增账号"
+						trigger={<Button type="primary">新建</Button>}
+						columns={CREATE_FORM_COLS}
+						onFinish={async (values) => {
+							await $createAccount(values);
+							message.success("创建成功");
+							actionRef.current?.reload();
+							return true;
+						}}
+						modalProps={COMMON_MODAL_PROPS}
+					/>,
+					<Button key="import" onClick={() => setImportOpen(true)}>
+						导入
+					</Button>,
+					<Dropdown
+						key="export"
+						menu={{
+							items: [
+								{ key: "csv", label: "导出 CSV" },
+								{ key: "xlsx", label: "导出 Excel" },
+							],
+							onClick: ({ key }) => handleExport(key as "csv" | "xlsx"),
+						}}
+					>
+						<Button>导出</Button>
+					</Dropdown>,
+					<Dropdown
+						key="template"
+						menu={{
+							items: [
+								{ key: "csv", label: "下载 CSV 模板" },
+								{ key: "xlsx", label: "下载 Excel 模板" },
+							],
+							onClick: ({ key }) =>
+								handleDownloadTemplate(key as "csv" | "xlsx"),
+						}}
+					>
+						<Button>模板下载</Button>
+					</Dropdown>,
+					<Button
+						key="batch-delete"
+						danger
+						disabled={!selectedRowKeys.length}
+						onClick={handleBatchDelete}
+					>
+						批量删除
+					</Button>,
+				]}
+				request={requestAccounts}
+				columns={tableColumns}
+				scroll={{ x: "100%" }}
+				rowSelection={{
+					selectedRowKeys,
+					onChange: (keys) => setSelectedRowKeys(keys),
+				}}
+			/>
+			<Modal
+				title="导入账号"
+				open={importOpen}
+				onCancel={() => {
+					setImportOpen(false);
+					setImportFile(null);
+				}}
+				onOk={handleImport}
+				okButtonProps={{ loading: importing, disabled: !importFile }}
+				{...COMMON_MODAL_PROPS}
+			>
+				<Space direction="vertical" style={{ width: "100%" }}>
+					<Upload
+						accept=".csv,.xlsx"
+						maxCount={1}
+						beforeUpload={(file) => {
+							setImportFile(file);
+							return false;
+						}}
+						onRemove={() => {
+							setImportFile(null);
+						}}
+					>
+						<Button>选择文件</Button>
+					</Upload>
+					<div>{importFile ? `已选择：${importFile.name}` : "未选择文件"}</div>
+					<Radio.Group
+						value={importMode}
+						onChange={(event) =>
+							setImportMode(event.target.value as ImportMode)
+						}
+					>
+						<Radio value="insert">仅新增</Radio>
+						<Radio value="upsert">存在则更新</Radio>
+					</Radio.Group>
+					<div>支持 CSV / Excel（.xlsx）</div>
+				</Space>
+			</Modal>
+		</>
 	);
 }

@@ -48,6 +48,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
 	// This effect depends on location and should be in the re-rendering component
 	useEffect(() => {
 		const handler = () => {
+			console.log("Auth expired, redirecting to login...");
 			const currentPath = location.pathname + location.search;
 			navigate(`/login?redirect=${encodeURIComponent(currentPath)}`, {
 				replace: true,

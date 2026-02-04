@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { OperationLogModule } from './modules/operation-log/operation-log.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { PositionModule } from './modules/position/position.module';
+import { ExportTaskModule } from './modules/export-task/export-task.module';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { OperationLogInterceptor } from './core/interceptors/operation-log.interceptor';
 
@@ -27,6 +28,7 @@ import { OperationLogInterceptor } from './core/interceptors/operation-log.inter
     DepartmentModule,
     PositionModule,
     OperationLogModule,
+    ExportTaskModule,
   ],
   controllers: [AppController],
   providers: [

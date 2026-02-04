@@ -3,6 +3,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import Dashboard from "@/pages/Dashboard";
 import Accounts from "@/pages/system/accounts";
 import Departments from "@/pages/system/departments";
+import ExportTasks from "@/pages/system/export-tasks";
 import OperationLogs from "@/pages/system/operation-logs";
 import Permissions from "@/pages/system/permissions";
 import Positions from "@/pages/system/positions";
@@ -84,6 +85,13 @@ export const allRoutes: AppRouteObject[] = [
 				handle: {
 					title: "操作日志",
 					code: "read:operation-log",
+				},
+			},
+			{
+				path: "export-tasks",
+				element: <ExportTasks />,
+				handle: {
+					title: "导出任务",
 				},
 			},
 		],

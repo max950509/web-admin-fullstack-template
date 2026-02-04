@@ -25,6 +25,7 @@ model User {
 
   userRoles UserRole[]
   operationLogs OperationLog[]
+  exportTasks ExportTask[]
   department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
 
@@ -135,4 +136,26 @@ model OperationLog {
   @@index([action, resource])
   @@index([createdAt])
   @@map("operation_logs")
+}
+
+model ExportTask {
+  id          Int      @id @default(autoincrement())
+  type        String
+  status      String
+  format      String
+  params      Json?
+  fileName    String?
+  filePath    String?
+  errorMessage String?
+  createdById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  finishedAt  DateTime?
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+  @@map("export_tasks")
 }

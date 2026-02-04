@@ -35,6 +35,14 @@ export interface AccountFormParams {
 	positionId?: number | null;
 }
 
+export type ImportMode = "insert" | "upsert";
+
+export interface AccountImportResult {
+	successCount: number;
+	failCount: number;
+	errors: { row: number; message: string }[];
+}
+
 export const $getAccounts = async (params?: AccountQuery) =>
 	request.get<PageResponse<AccountRow>>("/users", { params });
 
@@ -49,3 +57,24 @@ export const $updateAccount = async (id: number, params: AccountFormParams) =>
 
 export const $deleteAccount = async (id: number) =>
 	request.delete<void>(`/users/${id}`);
+
+export const $batchDeleteAccounts = async (ids: number[]) =>
+	request.post<{ count: number }>("/users/batch-delete", { ids });
+
+export const $importAccounts = async (
+	file: File,
+	mode: ImportMode = "insert",
+) => {
+	const formData = new FormData();
+	formData.append("file", file);
+	return request.post<AccountImportResult>("/users/import", formData, {
+		params: { mode },
+		headers: { "Content-Type": "multipart/form-data" },
+	});
+};
+
+export const $downloadAccountTemplate = async (format: "csv" | "xlsx") =>
+	request.get<Blob>("/users/template", {
+		params: { format },
+		responseType: "blob",
+	});

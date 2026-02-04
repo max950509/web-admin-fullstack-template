@@ -43,7 +43,7 @@ request.interceptors.request.use(
 request.interceptors.response.use(null, (error) => {
 	console.log(error);
 	const data = error?.response?.data;
-	const status = data?.status;
+	const status = data?.statusCode;
 	if (data?.message) {
 		message.error(data.message);
 	} else if (!error?.response) {

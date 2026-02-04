@@ -163,6 +163,27 @@ async function main() {
     },
   });
 
+  const exportTaskPage = await prisma.permission.create({
+    data: {
+      name: '导出任务',
+      type: 'page',
+      action: 'read',
+      resource: 'export-task',
+      parentId: systemMenu.id,
+      sort: 7,
+    },
+  });
+  const exportTaskCreate = await prisma.permission.create({
+    data: {
+      name: '创建导出任务',
+      type: 'action',
+      action: 'create',
+      resource: 'export-task',
+      parentId: exportTaskPage.id,
+      sort: 1,
+    },
+  });
+
   const departmentPage = await prisma.permission.create({
     data: {
       name: '部门管理',
@@ -266,6 +287,8 @@ async function main() {
           { permission: { connect: { id: permissionUpdate.id } } },
           { permission: { connect: { id: permissionDelete.id } } },
           { permission: { connect: { id: operationLogPage.id } } },
+          { permission: { connect: { id: exportTaskPage.id } } },
+          { permission: { connect: { id: exportTaskCreate.id } } },
           { permission: { connect: { id: departmentPage.id } } },
           { permission: { connect: { id: departmentCreate.id } } },
           { permission: { connect: { id: departmentUpdate.id } } },
