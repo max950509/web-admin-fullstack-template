@@ -25,6 +25,7 @@ import { BatchDeleteDto } from './dto/batch-delete.dto';
 import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { PermissionsGuard } from '../../core/guards/permissions.guard';
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator';
+import { ApiPageQuery } from '../../core/decorators/api-page-query.decorator';
 
 @Controller('users')
 @UseGuards(TokenAuthGuard, PermissionsGuard)
@@ -39,6 +40,7 @@ export class UserController {
 
   @Get()
   @CheckPermissions('read', 'account')
+  @ApiPageQuery()
   findAll(@Query() queryUserDto: QueryUserDto) {
     return this.userService.findAll(queryUserDto);
   }

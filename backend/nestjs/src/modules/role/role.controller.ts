@@ -19,6 +19,7 @@ import { TokenAuthGuard } from '../../core/guards/token-auth.guard';
 import { PermissionsGuard } from '../../core/guards/permissions.guard';
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator';
 import { QueryRoleDto } from './dto/query-role.dto';
+import { ApiPageQuery } from '../../core/decorators/api-page-query.decorator';
 
 @Controller('roles')
 @UseGuards(TokenAuthGuard, PermissionsGuard)
@@ -33,6 +34,7 @@ export class RoleController {
 
   @Get()
   @CheckPermissions('read', 'role')
+  @ApiPageQuery()
   findAll(@Query() queryRoleDto: QueryRoleDto) {
     return this.roleService.findAll(queryRoleDto);
   }

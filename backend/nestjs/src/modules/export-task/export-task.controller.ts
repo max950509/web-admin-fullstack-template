@@ -18,6 +18,7 @@ import { PermissionsGuard } from '../../core/guards/permissions.guard';
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator';
 import { ReqUser } from '../auth/auth.controller';
 import type { User } from '@prisma/client';
+import { ApiPageQuery } from '../../core/decorators/api-page-query.decorator';
 
 @Controller('export-tasks')
 @UseGuards(TokenAuthGuard, PermissionsGuard)
@@ -32,6 +33,7 @@ export class ExportTaskController {
 
   @Get()
   @CheckPermissions('read', 'export-task')
+  @ApiPageQuery()
   list(@ReqUser() user: User, @Query() query: QueryExportTaskDto) {
     return this.exportTaskService.listTasks(user.id, query);
   }

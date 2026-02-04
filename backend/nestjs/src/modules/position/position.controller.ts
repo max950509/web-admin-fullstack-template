@@ -19,6 +19,7 @@ import { CheckPermissions } from '../../core/decorators/check-permissions.decora
 import { CreatePositionDto } from './dto/create-position.dto';
 import { UpdatePositionDto } from './dto/update-position.dto';
 import { QueryPositionDto } from './dto/query-position.dto';
+import { ApiPageQuery } from '../../core/decorators/api-page-query.decorator';
 
 @Controller('positions')
 @UseGuards(TokenAuthGuard, PermissionsGuard)
@@ -33,6 +34,7 @@ export class PositionController {
 
   @Get()
   @CheckPermissions('read', 'position')
+  @ApiPageQuery()
   findAll(@Query() queryPositionDto: QueryPositionDto) {
     return this.positionService.findAll(queryPositionDto);
   }

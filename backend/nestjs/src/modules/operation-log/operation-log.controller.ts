@@ -6,6 +6,7 @@ import { PermissionsGuard } from '../../core/guards/permissions.guard';
 import { CheckPermissions } from '../../core/decorators/check-permissions.decorator';
 import { ReqUser } from '../auth/auth.controller';
 import type { User } from '@prisma/client';
+import { ApiPageQuery } from '../../core/decorators/api-page-query.decorator';
 
 @Controller('operation-logs')
 export class OperationLogController {
@@ -14,12 +15,14 @@ export class OperationLogController {
   @UseGuards(TokenAuthGuard, PermissionsGuard)
   @Get()
   @CheckPermissions('read', 'operation-log')
+  @ApiPageQuery()
   findAll(@Query() query: QueryOperationLogDto) {
     return this.operationLogService.findAll(query);
   }
 
   @UseGuards(TokenAuthGuard)
   @Get('me')
+  @ApiPageQuery()
   findMine(@ReqUser() user: User, @Query() query: QueryOperationLogDto) {
     return this.operationLogService.findMine(user.id, query);
   }
