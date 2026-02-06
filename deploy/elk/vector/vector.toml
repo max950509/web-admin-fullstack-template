@@ -1,0 +1,75 @@
+data_dir = "/var/lib/vector"
+
+[api]
+  enabled = true
+  address = "0.0.0.0:8686"
+
+[sources.docker_logs]
+  type = "docker_logs"
+  docker_host = "unix:///var/run/docker.sock"
+
+[transforms.parse_pino]
+  type = "remap"
+  inputs = ["docker_logs"]
+  source = '''
+  .event.original = .message
+
+  # 删除 docker labels，避免 ES mapping 冲突
+  del(.label)
+  del(.labels)
+
+  # 去掉尾部换行/空白，避免 JSON 解析失败
+  msg = strip_whitespace!(.message)
+
+  # 尝试解析 JSON；失败就打个标记，不要直接变成 {}
+  parsed, err = parse_json(msg)
+
+  if err == null && is_object(parsed) {
+    . = merge!(., parsed)
+  } else {
+    .log_parse_error = true
+  }
+
+  # 保证 event.dataset 至少有值
+  if !exists(.event) { .event = {} }
+  if !exists(.event.dataset) { .event.dataset = "system" }
+  '''
+
+# 不要一上来就强制 ecs（否则 parse 失败时全部丢）
+# 可以先留着，只采你的 backend（推荐用 label）
+# 你如果还没给 backend 打 label，就先注释掉这个 filter
+#[transforms.only_ecs]
+#  type = "filter"
+#  inputs = ["parse_pino"]
+#  condition = "exists(.service.name)"
+
+[transforms.drop_options]
+  type = "filter"
+  inputs = ["parse_pino"]
+  condition = '!(exists(.http.request.method) && .http.request.method == "OPTIONS")'
+
+[transforms.route_dataset]
+  type = "route"
+  inputs = ["drop_options"]
+  route.audit = '.event.dataset == "audit"'
+  route.system = '.event.dataset != "audit"'
+
+[sinks.es_system]
+  type = "elasticsearch"
+  inputs = ["route_dataset.system"]
+  endpoints = ["http://elasticsearch:9200"]
+  api_version = "v8"
+  mode = "data_stream"
+  data_stream.type = "logs"
+  data_stream.dataset = "system"
+  data_stream.namespace = "default"
+
+[sinks.es_audit]
+  type = "elasticsearch"
+  inputs = ["route_dataset.audit"]
+  endpoints = ["http://elasticsearch:9200"]
+  api_version = "v8"
+  mode = "data_stream"
+  data_stream.type = "logs"
+  data_stream.dataset = "audit"
+  data_stream.namespace = "default"

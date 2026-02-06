@@ -1,0 +1,100 @@
+x-logging: &default-logging
+  # Rotate stdout/stderr logs to avoid unlimited disk growth
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: postgres:16
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: web_admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    logging: *default-logging
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/nestjs/Dockerfile
+    command:
+      - sh
+      - -c
+      - /app/backend/nestjs/node_modules/.bin/prisma migrate deploy && node dist/src/main.js
+    environment:
+      PORT: 3030
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/web_admin?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      SERVICE_NAME: backend-nestjs
+      SERVICE_VERSION: dev
+      DEPLOYMENT_ENV: local
+      NODE_ENV: production
+      LOG_DRIVER: pino
+    ports:
+      - "3031:3030"
+    volumes:
+      - backend-uploads:/app/backend/nestjs/uploads
+    depends_on:
+      - postgres
+      - redis
+      - vector
+
+  elasticsearch:
+    image: docker.io/elasticsearch:8.12.2
+    logging: *default-logging
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.io/kibana:8.12.2
+    logging: *default-logging
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  vector:
+    image: timberio/vector:0.34.0-alpine
+    user: root
+    logging: *default-logging
+    command: ["--config", "/etc/vector/vector.toml"]
+    ports:
+      - "8686:8686"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./elk/vector/vector.toml:/etc/vector/vector.toml:ro
+      - vector-data:/var/lib/vector
+    depends_on:
+      - elasticsearch
+
+volumes:
+  esdata:
+  postgres-data:
+  redis-data:
+  backend-uploads:
+  vector-data:

@@ -1,0 +1,6 @@
+**/node_modules
+**/dist
+.pnpm-store
+.git
+.DS_Store
+backend/nestjs/uploads

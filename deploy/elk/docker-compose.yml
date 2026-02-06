@@ -1,0 +1,49 @@
+x-logging: &default-logging
+  # Rotate stdout/stderr logs to avoid unlimited disk growth
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  elasticsearch:
+    image: docker.io/elasticsearch:8.12.2
+    logging: *default-logging
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.io/kibana:8.12.2
+    logging: *default-logging
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  vector:
+    image: timberio/vector:0.34.0-alpine
+    user: root
+    logging: *default-logging
+    command: ["--config", "/etc/vector/vector.toml"]
+    ports:
+      - "8686:8686"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./vector/vector.toml:/etc/vector/vector.toml:ro
+      - vector-data:/var/lib/vector
+    depends_on:
+      - elasticsearch
+
+volumes:
+  esdata:
+  vector-data:
