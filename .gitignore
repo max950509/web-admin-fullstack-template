@@ -2,3 +2,4 @@
 node_modules
 dist
 SA.md
+.pnpm-store
