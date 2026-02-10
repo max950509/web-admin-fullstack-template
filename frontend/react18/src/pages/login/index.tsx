@@ -168,7 +168,7 @@ const LoginPage: React.FC = () => {
 
 	return (
 		<div className="main">
-			<h1 className="title">运维发布平台</h1>
+			<h1 className="title">Web Admin</h1>
 			<Form onFinish={(data) => handleLogin(data)} form={form} className="form">
 				<Form.Item
 					name="username"

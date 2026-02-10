@@ -255,7 +255,7 @@ export default function Account() {
 			await $createExportTask({
 				type: "account",
 				format,
-				params: lastQueryRef.current,
+				params: lastQueryRef.current as Record<string, unknown>,
 			});
 			message.success("导出任务已创建，请到导出任务查看");
 		} catch {

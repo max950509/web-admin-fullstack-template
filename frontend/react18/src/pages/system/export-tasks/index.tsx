@@ -1,6 +1,6 @@
 import type { ActionType, ProColumns } from "@ant-design/pro-components";
 import { message, Space, Tag } from "antd";
-import { type MutableRefObject, useRef } from "react";
+import { useRef } from "react";
 import BaseProTable from "@/components/BaseProTable.tsx";
 import {
 	$downloadExportTask,
@@ -42,9 +42,7 @@ const downloadBlob = (blob: Blob, filename: string) => {
 	window.URL.revokeObjectURL(url);
 };
 
-const buildOptionColumn = (
-	actionRef: MutableRefObject<ActionType | null>,
-): ProColumns<ExportTaskItem> => ({
+const buildOptionColumn = (): ProColumns<ExportTaskItem> => ({
 	title: "操作",
 	valueType: "option",
 	fixed: "right",
@@ -128,7 +126,7 @@ const COLUMNS: ProColumns<ExportTaskItem>[] = [
 
 export default function ExportTasksPage() {
 	const actionRef = useRef<ActionType | null>(null);
-	const tableColumns = [...COLUMNS, buildOptionColumn(actionRef)];
+	const tableColumns = [...COLUMNS, buildOptionColumn()];
 
 	return (
 		<BaseProTable<ExportTaskItem, ExportTaskQuery>
