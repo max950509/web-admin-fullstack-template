@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
+import { OpenTelemetryModule } from 'nestjs-otel';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { RoleModule } from './modules/role/role.module';
@@ -19,6 +20,11 @@ import { pinoHttpConfig } from './core/logger/pino-config';
 
 @Module({
   imports: [
+    OpenTelemetryModule.forRoot({
+      metrics: {
+        hostMetrics: true,
+      },
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

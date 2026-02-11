@@ -1,3 +1,4 @@
+import otelSDK from './tracing';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -5,6 +6,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 
 async function bootstrap() {
+  try {
+    otelSDK.start();
+  } catch (err) {
+    console.error('OTel SDK failed to start', err);
+  }
   const usePino = process.env.LOG_DRIVER === 'pino';
   const app = await NestFactory.create(AppModule, { bufferLogs: usePino });
   if (usePino) {

@@ -44,7 +44,7 @@ DOCKER_BUILDKIT=1 docker compose -f deploy/docker-compose.yml up -d --build
 访问地址：
 - 前端：`http://localhost:8080`
 - 后端：`http://localhost:3031`
-- Swagger：`http://localhost:8080/api-docs`
+- Swagger：`http://localhost:3031/api-docs`
 
 默认账号（来自 seed）：
 - `admin / password123`
@@ -102,6 +102,16 @@ docker compose -f deploy/elk/docker-compose.yml up -d
 ```
 说明文档：`docs/系统日志.md`
 
+## 可选：服务监控 + 全链路追踪（Metrics + Tracing）
+```bash
+docker compose -f deploy/observability/docker-compose.yml up -d
+```
+
+访问地址：
+- Grafana：`http://localhost:3000`（默认 `admin / admin`）
+
+说明文档：`docs/可观测性.md`
+
 ## API 约定
 - API 全局前缀：`/api`
 - Swagger 路径：`/api-docs`
@@ -118,16 +128,6 @@ docker compose -f deploy/elk/docker-compose.yml up -d
 
 ## License
 MIT
-
-
-
-
-
-
-
-
-
-
 
 
 

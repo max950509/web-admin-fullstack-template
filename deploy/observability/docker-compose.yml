@@ -1,0 +1,71 @@
+x-logging: &default-logging
+  # Rotate stdout/stderr logs to avoid unlimited disk growth
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.122.1
+    logging: *default-logging
+    command: ["--config", "/etc/otel-collector.yml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "9464:9464"
+    volumes:
+      - ./otel-collector/otel-collector.yml:/etc/otel-collector.yml:ro
+    networks:
+      - web-admin-network
+
+  prometheus:
+    image: prom/prometheus:v3.3.0
+    logging: *default-logging
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - otel-collector
+    networks:
+      - web-admin-network
+
+  tempo:
+    image: grafana/tempo:2.7.0
+    logging: *default-logging
+    command: ["-config.file=/etc/tempo.yml"]
+    ports:
+      - "3200:3200"
+      - "4319:4317"
+    volumes:
+      - ./tempo/tempo.yml:/etc/tempo.yml:ro
+      - tempo-data:/var/tempo
+    networks:
+      - web-admin-network
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    logging: *default-logging
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+      - tempo
+    networks:
+      - web-admin-network
+
+volumes:
+  grafana-data:
+  tempo-data:
+
+networks:
+  web-admin-network:
+    name: web-admin-network
+    external: true
