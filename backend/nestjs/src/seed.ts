@@ -346,7 +346,7 @@ async function main() {
   });
 
   // Create users and connect roles
-  const adminPassword = await bcrypt.hash('password123', 10);
+  const adminPassword = await bcrypt.hash('admin', 10);
   await prisma.user.create({
     data: {
       username: 'admin',
@@ -359,7 +359,7 @@ async function main() {
     },
   });
 
-  const userPassword = await bcrypt.hash('password123', 10);
+  const userPassword = await bcrypt.hash('admin', 10);
   await prisma.user.create({
     data: {
       username: 'john.doe',

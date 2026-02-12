@@ -36,6 +36,6 @@
 		"less": "^4.4.1",
 		"lodash-es": "^4.17.21",
 		"typescript": "~5.8.3",
-		"vite": "npm:rolldown-vite@latest"
+		"vite": "^7.3.1"
 	}
 }

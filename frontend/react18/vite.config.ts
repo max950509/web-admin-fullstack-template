@@ -22,17 +22,17 @@ export default defineConfig(({ mode }) => {
 				},
 			},
 		},
-		build: {
-			rolldownOptions: {
-				output: {
-					advancedChunks: {
-						groups: [
-							{ name: '"react-vendor"', test: /\/react(?:-dom)?/ },
-							{ name: '"antd-vendor"', test: /\/antd/ },
-						],
-					},
-				},
-			},
-		},
+		// build: {
+		// 	rolldownOptions: {
+		// 		output: {
+		// 			advancedChunks: {
+		// 				groups: [
+		// 					{ name: '"react-vendor"', test: /\/react(?:-dom)?/ },
+		// 					{ name: '"antd-vendor"', test: /\/antd/ },
+		// 				],
+		// 			},
+		// 		},
+		// 	},
+		// },
 	};
 });

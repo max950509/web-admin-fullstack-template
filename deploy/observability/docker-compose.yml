@@ -68,4 +68,3 @@ volumes:
 networks:
   web-admin-network:
     name: web-admin-network
-    external: true

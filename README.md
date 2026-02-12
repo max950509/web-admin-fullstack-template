@@ -1,135 +1,78 @@
-## 项目简介
-`Web Admin Fullstack Template` 是一个现代化的全栈后台管理系统模板，开箱即用的账号/权限/组织结构管理与导出能力，适合作为中后台项目的起点。
+# Web Admin Fullstack Template
 
-## 适用场景
-- 企业内部系统的后台基建
-- 中后台项目的快速起步
-- 教学/练手的全栈范例
+一个现代、开箱即用的全栈后台管理系统模板，内置了完整的用户、角色、权限管理体系，并集成了强大的可观测性与自动部署能力。它是您启动企业级中后台项目的理想选择。
 
-## 主要特性
-- 前后端分离：React 18 + NestJS
-- 权限体系：角色、权限、账号
-- 组织结构：部门、岗位
-- 导入/导出任务：支持 CSV/XLSX
-- 多Tabs管理：支持标签页的缓存、关闭、刷新、移动
-- CRUD封装：基于antd pro-components 快速搭建表格类增上改查
-- Docker 化部署：一条命令起完整服务
+[![Live Demo](https://img.shields.io/badge/Demo-Online-brightgreen)](http://120.27.143.170:8080/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 核心功能
-- 登录与权限控制（RBAC）
-- 账号管理、角色管理、权限管理
-- 部门/岗位组织结构
-- 操作日志与导出任务
-- Swagger API 文档
+## ✨ 核心特性
 
-## 技术栈
-- 前端：React 18、Vite（rolldown-vite）、Antd
-- 后端：NestJS 11、Prisma、PostgreSQL、Redis
-- 运维：Docker Compose、Nginx
+*   **现代技术栈**: 前端采用 **React 18 + Vite + Ant Design**, 后端采用 **NestJS + Prisma**，强强联合，开发体验优秀。
+*   **完备的权限系统**: 内置基于 **RBAC** 的用户、角色、权限管理，支持菜单、页面、操作三级权限控制。
+*   **组织架构**: 支持多级部门和岗位管理，满足复杂组织需求。
+*   **强大的异步任务**: 基于 **BullMQ 和 Redis** 的异步任务队列，轻松处理耗时操作（如数据导出）。
+*   **一流的可观测性**: 集成 **OpenTelemetry、Prometheus、Grafana 和 Tempo**，提供全链路追踪、指标监控和日志聚合。
+*   **容器化与一键部署**: 使用 **Docker Compose** 编排，一条命令即可启动包括数据库、缓存、前后端在内的完整服务。
+*   **优秀的前端体验**: 基于 Ant Design Pro Components 封装，支持多标签页缓存（KeepAlive）、动态路由和配置化 CRUD 页面。
 
-## 目录结构
-- `frontend/react18` 前端应用
-- `backend/nestjs` 后端服务
-- `deploy` Docker Compose 与 Nginx 配置
-- `deploy/elk` 可选 ELK 日志栈
-- `docs` 说明文档
+## 🚀 快速开始
 
-## 快速开始（Docker）
-默认会自动执行 `migrate` + `seed`，并启动前后端。
+本项目推荐使用 Docker 进行一键部署。
 
-```bash
-DOCKER_BUILDKIT=1 docker compose -f deploy/docker-compose.yml up -d --build
-```
+1.  **克隆项目**
+    ```bash
+    git clone https://github.com/your-repo/web-admin-fullstack-template.git
+    cd web-admin-fullstack-template
+    ```
 
-访问地址：
-- 前端：`http://localhost:8080`
-- 后端：`http://localhost:3031`
-- Swagger：`http://localhost:3031/api-docs`
+2.  **启动服务**
+    ```bash
+    docker compose -f deploy/docker-compose.yml up -d --build
+    ```
+    此命令会自动构建镜像，并启动所有核心服务。首次启动会自动执行数据库迁移和数据填充（seed）。
 
-默认账号（来自 seed）：
-- `admin / password123`
+3.  **访问系统**
+    *   **前端应用**: `http://localhost:8080`
+    *   **后端 API**: `http://localhost:3030`
+    *   **Swagger 文档**: `http://localhost:3030/api-docs`
+    *   **在线演示**: `http://120.27.143.170:8080/`
 
-注意：`seed` 会清空并重建数据。若不希望每次启动都重置数据，可移除 `deploy/docker-compose.yml` 中的 `seed` 服务或改为手动执行。
+4.  **默认账号**
+    *   用户名: `admin`
+    *   密码: `admin`
 
-## 本地开发（不使用 Docker）
-前置依赖：
-- Node.js 22
-- pnpm
-- PostgreSQL 16
-- Redis 7
+> **注意**: 默认配置下，每次重启 Docker 都会执行 `seed` 任务，重置数据库。如需持久化数据，请在 `deploy/docker-compose.yml` 中移除 `seed` 服务。
 
-安装依赖：
-```bash
-pnpm install
-```
+## 📚 深入文档
 
-后端配置：
-- 编辑 `backend/nestjs/.env`，确保 `DATABASE_URL`、`REDIS_HOST`、`REDIS_PORT` 正确
-- 生成 Prisma Client：
-```bash
-pnpm -C backend/nestjs exec prisma generate
-```
-- 迁移数据库：
-```bash
-pnpm -C backend/nestjs exec prisma migrate dev
-```
-- 可选：初始化数据
-```bash
-pnpm -C backend/nestjs exec ts-node src/seed.ts
-```
-- 启动后端：
-```bash
-pnpm -C backend/nestjs start:dev
-```
+我们为您准备了详尽的文档，以帮助您更好地理解和使用此模板。
 
-前端启动：
-```bash
-pnpm -C frontend/react18 dev
-```
+*   **想了解项目整体架构？**
+    *   请阅读 **[基础架构设计](./docs/基础架构.md)**
+*   **想深入后端的技术实现？**
+    *   **[登录与认证机制](./docs/登录设计.md)**
+    *   **[权限与鉴权设计](./docs/权限设计.md)**
+    *   **[异步导出任务](./docs/导出任务.md)**
+*   **想了解前端的巧妙之处？**
+    *   **[前端架构与 Schema 驱动](./docs/前端架构.md)**
+    *   **[多标签页与状态保持](./docs/多标签与KeepAlive.md)**
+*   **想玩转可观测性与部署？**
+    *   **[可观测性体系（Metrics, Traces, Logs）](./docs/可观测性.md)**
+    *   **[系统日志（ELK）详解](./docs/系统日志.md)**
 
-## 环境变量说明
-后端（`backend/nestjs/.env`）：
-- `DATABASE_URL` 数据库连接串
-- `REDIS_HOST`、`REDIS_PORT`
+## 🛠️ 本地开发
 
-前端（构建时注入）：
-- `VITE_APP_BASE` 部署路径
-- `VITE_APP_API_BASE` 接口地址（默认 `/api`）
+如果您不希望使用 Docker，也可以在本地环境中运行。请确保您已安装 `Node.js (v22+)`, `pnpm`, `PostgreSQL (v16+)`, `Redis (v7+)`。
 
-## 可选：ELK 日志栈
-```bash
-docker compose -f deploy/elk/docker-compose.yml up -d
-```
-说明文档：`docs/系统日志.md`
+详细步骤请参考 **[本地开发指南](./docs/本地开发指南.md)** (我将为您创建一个新文件来存放这部分内容)。
 
-## 可选：服务监控 + 全链路追踪（Metrics + Tracing）
-```bash
-docker compose -f deploy/observability/docker-compose.yml up -d
-```
+## 🤝 贡献
 
-访问地址：
-- Grafana：`http://localhost:3000`（默认 `admin / admin`）
+我们欢迎任何形式的贡献！无论是提交 Issue 还是 Pull Request。
 
-说明文档：`docs/可观测性.md`
+## 📄 License
 
-## API 约定
-- API 全局前缀：`/api`
-- Swagger 路径：`/api-docs`
-
-## 开发约定
-- 前端接口统一走 `VITE_APP_API_BASE`
-- 生产环境建议使用 Nginx 反向代理 `/api`
-
-## 贡献
-欢迎提 PR 或 Issue。请确保：
-- 提交前通过构建与基础功能自测
-- 变更包含必要的说明与文档更新
- - 如涉及数据库变更，请附带 migration
-
-## License
-MIT
-
-
+本项基于 [MIT License](./LICENSE) 开源。
 
 
 
